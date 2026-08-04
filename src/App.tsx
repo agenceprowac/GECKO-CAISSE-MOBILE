@@ -4,6 +4,7 @@ import { LockScreen } from './components/Auth/LockScreen';
 import { LandingPage } from './components/UI/LandingPage';
 import { TenantAuth } from './components/Auth/TenantAuth';
 import { SuperAdminDashboard } from './components/Auth/SuperAdminDashboard';
+import { NotificationModal } from './components/UI/NotificationModal';
 import { usePOSStore } from './store';
 
 function App() {
@@ -11,6 +12,7 @@ function App() {
   const currentTenant = usePOSStore(state => state.currentTenant);
   const hasEnteredApp = usePOSStore(state => state.hasEnteredApp);
   const setHasEnteredApp = usePOSStore(state => state.setHasEnteredApp);
+  const isAuthenticatingSuperAdmin = usePOSStore(state => state.isAuthenticatingSuperAdmin);
   
   const setOnlineStatus = usePOSStore(state => state.setOnlineStatus);
   const syncSalesWithServer = usePOSStore(state => state.syncSalesWithServer);
@@ -20,63 +22,65 @@ function App() {
   useEffect(() => {
     const handleOnline = () => {
       setOnlineStatus(true);
-      // Tentative de synchronisation en arrière-plan dès la reconnexion
       syncSalesWithServer();
     };
-
-    const handleOffline = () => {
-      setOnlineStatus(false);
-    };
-
-    const handleBeforeInstallPrompt = (e: Event) => {
-      // Empêcher l'affichage automatique de la bannière système par défaut
-      e.preventDefault();
-      // Stocker l'événement pour un déclenchement ultérieur au clic du bouton
-      setDeferredPrompt(e);
-    };
+    const handleOffline = () => setOnlineStatus(false);
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
-    // Première synchro si on démarre en ligne
+    // Initial check
+    setOnlineStatus(navigator.onLine);
     if (navigator.onLine) {
       syncSalesWithServer();
     }
 
+    // PWA Install prompt listener
+    const handleBeforeInstall = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
     };
-  }, [setOnlineStatus, syncSalesWithServer, setDeferredPrompt]);
+  }, []);
 
-  // Détecter si l'application est ouverte en mode autonome (PWA installée sur l'écran d'accueil)
-  const isStandalone = typeof window !== 'undefined' && (
-    (window.navigator as any).standalone || 
-    window.matchMedia('(display-mode: standalone)').matches
-  );
-
-  if (!hasEnteredApp && !isStandalone) {
-    return <LandingPage onEnterApp={() => setHasEnteredApp(true)} />;
-  }
-
-  if (!currentTenant) {
-    return <TenantAuth />;
-  }
-
-  if (!currentUser) {
-    return <LockScreen />;
-  }
-
-  if (currentUser.role === 'SUPER_ADMIN') {
-    return <SuperAdminDashboard />;
-  }
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                      (window.navigator as any).standalone === true;
 
   return (
-    <POSLayout />
+    <>
+      {!hasEnteredApp && !isStandalone && (
+        <LandingPage onEnterApp={() => setHasEnteredApp(true)} />
+      )}
+
+      {hasEnteredApp && isAuthenticatingSuperAdmin && (
+        <LockScreen />
+      )}
+
+      {hasEnteredApp && !isAuthenticatingSuperAdmin && !currentTenant && (
+        <TenantAuth />
+      )}
+
+      {hasEnteredApp && !isAuthenticatingSuperAdmin && currentTenant && !currentUser && (
+        <LockScreen />
+      )}
+
+      {hasEnteredApp && !isAuthenticatingSuperAdmin && currentTenant && currentUser && currentUser.role === 'SUPER_ADMIN' && (
+        <SuperAdminDashboard />
+      )}
+
+      {hasEnteredApp && !isAuthenticatingSuperAdmin && currentTenant && currentUser && currentUser.role !== 'SUPER_ADMIN' && (
+        <POSLayout />
+      )}
+
+      <NotificationModal />
+    </>
   );
 }
 
 export default App;
-

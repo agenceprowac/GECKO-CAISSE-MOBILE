@@ -11,7 +11,6 @@ import { TablesPage } from '../Tables/TablesPage';
 import { UsersPage } from '../Users/UsersPage';
 import { ProfilePage } from '../Users/ProfilePage';
 import { Menu, Search, Users, X, Wifi, WifiOff, RefreshCw, PackagePlus, Tag } from 'lucide-react';
-import { NotificationModal } from '../UI/NotificationModal';
 import { usePOSStore } from '../../store';
 
 export const POSLayout: React.FC = () => {
@@ -214,7 +213,6 @@ export const POSLayout: React.FC = () => {
       {showArticleManager && <ArticleManager onClose={() => setShowArticleManager(false)} />}
       {showPayment && <PaymentModal onClose={() => setShowPayment(false)} />}
       {showTableSelector && <TableSelector onClose={() => setShowTableSelector(false)} />}
-      <NotificationModal />
     </div>
   );
 };

@@ -12,6 +12,8 @@ interface POSState {
   updateTenantSubscription: (tenantId: string, plan: SubscriptionPlan, status: 'ACTIVE' | 'SUSPENDED') => Promise<void>;
   hasEnteredApp: boolean;
   setHasEnteredApp: (val: boolean) => void;
+  isAuthenticatingSuperAdmin: boolean;
+  setAuthenticatingSuperAdmin: (val: boolean) => void;
 
   // PWA Install Prompt
   deferredPrompt: any;
@@ -66,8 +68,8 @@ interface POSState {
   total: number;
 
   // Global Notification / Confirm Dialog System
-  notification: { type: 'alert' | 'confirm'; message: string; onConfirm?: () => void } | null;
-  showNotification: (type: 'alert' | 'confirm', message: string, onConfirm?: () => void) => void;
+  notification: { type: 'success' | 'alert' | 'error' | 'confirm'; message: string; onConfirm?: () => void } | null;
+  showNotification: (type: 'success' | 'alert' | 'error' | 'confirm', message: string, onConfirm?: () => void) => void;
   hideNotification: () => void;
 }
 
@@ -124,7 +126,8 @@ const loadPersistedData = () => {
     ],
     sales: [],
     stockHistory: [],
-    hasEnteredApp: false
+    hasEnteredApp: false,
+    isAuthenticatingSuperAdmin: false
   };
 };
 
@@ -156,6 +159,8 @@ export const usePOSStore = create<POSState>((set, get) => {
     sales: persistedData.sales,
     stockHistory: persistedData.stockHistory || [],
     hasEnteredApp: persistedData.hasEnteredApp || false,
+    isAuthenticatingSuperAdmin: false,
+    setAuthenticatingSuperAdmin: (val) => set({ isAuthenticatingSuperAdmin: val }),
 
     getStockHistoryByTenant: () => {
       const tenantId = get().currentTenant?.id;
@@ -379,34 +384,16 @@ export const usePOSStore = create<POSState>((set, get) => {
           status: 'ACTIVE'
         };
 
-        const superAdminUser: User = {
-          id: 'usr_super_admin',
-          name: 'Lionel Super-Admin',
-          pinCode: '9999',
-          role: 'SUPER_ADMIN'
-        };
-
-        const usersExist = state.users.some(u => u.role === 'SUPER_ADMIN');
-        const updatedUsers = usersExist ? state.users : [...state.users, superAdminUser];
-
+        // Activer l'état temporaire d'authentification Super-Admin
         set({ 
-          currentTenant: superAdminTenant, 
-          currentUser: superAdminUser,
-          users: updatedUsers,
-          hasEnteredApp: true, 
-          cart: [], 
-          currentTable: null, 
-          total: 0 
+          currentTenant: null, // Aucun tenant de caisse !
+          currentUser: null,
+          isAuthenticatingSuperAdmin: true,
+          hasEnteredApp: true
         });
 
-        persist({ 
-          users: updatedUsers,
-          currentTenant: superAdminTenant, 
-          hasEnteredApp: true 
-        });
-
-        // Charger tous les tenants depuis le serveur
-        await get().syncCloudData(superAdminTenant.id);
+        // Charger tous les tenants depuis le serveur (en mode fantôme)
+        await get().syncCloudData('tnt_super_admin');
 
         return superAdminTenant;
       }

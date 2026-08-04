@@ -4,9 +4,20 @@ import { Lock, Users, ArrowLeft, UserPlus } from 'lucide-react';
 import type { User } from '../../types';
 
 export const LockScreen: React.FC = () => {
-  const { currentTenant, getUsersByTenant, setCurrentUser, logoutTenant, users: allUsers, showNotification } = usePOSStore();
+  const { currentTenant, getUsersByTenant, setCurrentUser, logoutTenant, users: allUsers, showNotification, isAuthenticatingSuperAdmin, setAuthenticatingSuperAdmin } = usePOSStore();
   const users = getUsersByTenant();
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  
+  // Profil virtuel Super-Admin
+  const superAdminUser: User = {
+    id: 'usr_super_admin',
+    name: 'Lionel Super-Admin',
+    pinCode: '9999',
+    role: 'SUPER_ADMIN'
+  };
+
+  const [selectedUser, setSelectedUser] = useState<User | null>(
+    isAuthenticatingSuperAdmin ? superAdminUser : null
+  );
   const [pin, setPin] = useState('');
   const [error, setError] = useState(false);
 
@@ -18,13 +29,23 @@ export const LockScreen: React.FC = () => {
       const newPin = pin + num;
       setPin(newPin);
 
-      // Automatically validate if 4 digits are entered
-      if (newPin.length === 4 && selectedUser) {
-        if (selectedUser.pinCode === newPin) {
-          setCurrentUser(selectedUser);
-        } else {
-          setError(true);
-          setPin('');
+      // Validation automatique si 4 chiffres
+      if (newPin.length === 4) {
+        if (isAuthenticatingSuperAdmin) {
+          if (newPin === '9999') {
+            setAuthenticatingSuperAdmin(false);
+            setCurrentUser(superAdminUser);
+          } else {
+            setError(true);
+            setPin('');
+          }
+        } else if (selectedUser) {
+          if (selectedUser.pinCode === newPin) {
+            setCurrentUser(selectedUser);
+          } else {
+            setError(true);
+            setPin('');
+          }
         }
       }
     }
@@ -44,7 +65,12 @@ export const LockScreen: React.FC = () => {
             
             {/* Bouton pour revenir à la saisie d'e-mail */}
             <button
-              onClick={() => logoutTenant()}
+              onClick={() => {
+                if (isAuthenticatingSuperAdmin) {
+                  setAuthenticatingSuperAdmin(false);
+                }
+                logoutTenant();
+              }}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-dark-700 hover:bg-dark-600 border border-dark-600 rounded-xl text-xs font-bold text-gray-300 transition-all cursor-pointer active:scale-95"
             >
               <ArrowLeft size={12} />
@@ -53,7 +79,27 @@ export const LockScreen: React.FC = () => {
           </div>
           
           <div className="flex-1 overflow-y-auto flex flex-col gap-3 pr-2">
-            {users.length === 0 ? (
+            {isAuthenticatingSuperAdmin ? (
+              <button
+                onClick={() => {
+                  setSelectedUser(superAdminUser);
+                  setPin('');
+                  setError(false);
+                }}
+                className="p-4 rounded-2xl flex items-center justify-between border-2 border-primary bg-primary/10 text-white transition-all active:scale-[0.98]"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-dark-700 flex items-center justify-center font-bold text-white text-lg">
+                    SA
+                  </div>
+                  <div className="text-left">
+                    <p className="font-bold text-lg text-white">Lionel Super-Admin</p>
+                    <p className="text-sm text-gray-400 font-medium">SUPER_ADMIN</p>
+                  </div>
+                </div>
+                <span className="text-primary text-xl">●</span>
+              </button>
+            ) : users.length === 0 ? (
               <div className="flex flex-col items-center justify-center text-center p-6 bg-dark-900 rounded-2xl border border-dashed border-dark-700 flex-1 my-auto">
                 <Users className="text-gray-500 mb-4" size={32} />
                 <p className="text-xs text-gray-400 font-medium mb-4 leading-relaxed">
@@ -70,12 +116,10 @@ export const LockScreen: React.FC = () => {
                       tenantId: currentTenant?.id
                     };
                     
-                    // Ajouter le nouvel admin directement dans le store
                     usePOSStore.setState({
                       users: [...allUsers, newAdmin]
                     });
 
-                    // Forcer la sauvegarde
                     localStorage.setItem('gecko_caisse_saas_data', JSON.stringify(usePOSStore.getState()));
                     showNotification('alert', `Profil administrateur créé ! Connectez-vous avec le code PIN : ${defaultPin}`);
                   }}
