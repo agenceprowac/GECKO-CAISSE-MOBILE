@@ -16,8 +16,6 @@
   body {
     background-color: var(--color-dark-900);
     color: white;
-    overflow: hidden;
-    overscroll-behavior-y: none;
     -webkit-tap-highlight-color: transparent;
   }
 }
