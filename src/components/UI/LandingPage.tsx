@@ -77,7 +77,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
           {/* Desktop Nav */}
           <nav className="hidden md:flex items-center gap-8">
             <a href="#features" className="text-sm text-gray-400 hover:text-white transition-colors">Fonctionnalités</a>
-            <a href="#pricing" className="text-sm text-gray-400 hover:text-white transition-colors">Tarifs</a>
             <a href="#downloads" className="text-sm text-gray-400 hover:text-white transition-colors">Télécharger</a>
             <a href="#testimonials" className="text-sm text-gray-400 hover:text-white transition-colors">Avis</a>
             <a href="#faq" className="text-sm text-gray-400 hover:text-white transition-colors">FAQ</a>
@@ -107,13 +106,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
               className="text-gray-300 hover:text-white py-2"
             >
               Fonctionnalités
-            </a>
-            <a 
-              href="#pricing" 
-              onClick={() => setMobileMenuOpen(false)}
-              className="text-gray-300 hover:text-white py-2"
-            >
-              Tarifs
             </a>
             <a 
               href="#downloads" 
@@ -465,156 +457,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing / Section Tarifs */}
-      <section id="pricing" className="py-20 bg-gray-950 border-t border-gray-800/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <h3 className="text-3xl sm:text-5xl font-black mb-4 tracking-tight">
-              Des tarifs adaptés à <span className="bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 bg-clip-text text-transparent">votre activité</span>
-            </h3>
-            <p className="text-gray-400 text-lg">
-              Aucun coût caché. Choisissez la formule qui convient le mieux à la taille de votre bar ou restaurant.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
-            
-            {/* Plan Standard */}
-            <div className="bg-gradient-to-b from-gray-900 to-gray-950 border border-gray-800 p-8 rounded-3xl flex flex-col justify-between hover:border-gray-700 transition-all relative">
-              <div>
-                <h4 className="text-lg font-bold text-gray-400 mb-2">Standard</h4>
-                <div className="flex items-baseline gap-1 mb-6">
-                  <span className="text-4xl font-black text-white">15 000 F</span>
-                  <span className="text-gray-500 text-sm">/ mois</span>
-                </div>
-                <p className="text-xs text-gray-400 mb-6 leading-relaxed">
-                  Idéal pour les petites structures, salons de thé ou petits stands de vente rapides.
-                </p>
-                <div className="border-t border-gray-800/60 my-4" />
-                <ul className="space-y-3.5 text-xs text-gray-300">
-                  <li className="flex items-center gap-2.5">
-                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
-                    Caisse enregistreuse tactile rapide
-                  </li>
-                  <li className="flex items-center gap-2.5 text-amber-400 font-semibold">
-                    <span className="w-1.5 h-1.5 bg-amber-400 rounded-full" />
-                    Limite : 15 articles maximum
-                  </li>
-                  <li className="flex items-center gap-2.5 text-amber-400 font-semibold">
-                    <span className="w-1.5 h-1.5 bg-amber-400 rounded-full" />
-                    Limite : 5 tables maximum
-                  </li>
-                  <li className="flex items-center gap-2.5">
-                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
-                    Rapports et statistiques de base
-                  </li>
-                  <li className="flex items-center gap-2.5">
-                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
-                    1 seul appareil connecté
-                  </li>
-                </ul>
-              </div>
-              <button 
-                onClick={onEnterApp}
-                className="w-full py-4 mt-8 bg-gray-800 hover:bg-gray-700 text-white font-bold rounded-2xl transition-colors text-sm cursor-pointer border border-gray-700"
-              >
-                Créer un Espace Standard
-              </button>
-            </div>
-
-            {/* Plan Premium */}
-            <div className="bg-gradient-to-b from-gray-900 to-gray-950 border-2 border-blue-500/80 p-8 rounded-3xl flex flex-col justify-between hover:border-blue-400 transition-all relative shadow-2xl shadow-blue-500/5">
-              <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-blue-600 text-white text-[10px] font-black uppercase rounded-full tracking-wider shadow">
-                Le Plus Populaire
-              </span>
-              <div>
-                <h4 className="text-lg font-bold text-blue-400 mb-2">Premium</h4>
-                <div className="flex items-baseline gap-1 mb-6">
-                  <span className="text-4xl font-black text-white">30 000 F</span>
-                  <span className="text-gray-500 text-sm">/ mois</span>
-                </div>
-                <p className="text-xs text-gray-400 mb-6 leading-relaxed">
-                  Conçu pour les bars et restaurants en croissance cherchant un suivi de stock rigoureux.
-                </p>
-                <div className="border-t border-gray-800/60 my-4" />
-                <ul className="space-y-3.5 text-xs text-gray-300">
-                  <li className="flex items-center gap-2.5">
-                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
-                    <strong>Articles & Catalogue illimités</strong>
-                  </li>
-                  <li className="flex items-center gap-2.5">
-                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
-                    <strong>Tables et Ardoises illimitées</strong>
-                  </li>
-                  <li className="flex items-center gap-2.5">
-                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
-                    Historique détaillé des mouvements de stock
-                  </li>
-                  <li className="flex items-center gap-2.5">
-                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
-                    Rapports périodiques (mensuels, par vendeur)
-                  </li>
-                  <li className="flex items-center gap-2.5">
-                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
-                    Mode hors-ligne / Synchro Cloud en arrière-plan
-                  </li>
-                </ul>
-              </div>
-              <button 
-                onClick={onEnterApp}
-                className="w-full py-4 mt-8 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-2xl transition-colors text-sm cursor-pointer shadow-lg shadow-blue-500/20"
-              >
-                Créer un Espace Premium
-              </button>
-            </div>
-
-            {/* Plan Ultra */}
-            <div className="bg-gradient-to-b from-gray-900 to-gray-950 border border-gray-800 p-8 rounded-3xl flex flex-col justify-between hover:border-gray-700 transition-all relative">
-              <div>
-                <h4 className="text-lg font-bold text-purple-400 mb-2">Ultra</h4>
-                <div className="flex items-baseline gap-1 mb-6">
-                  <span className="text-4xl font-black text-white">50 000 F</span>
-                  <span className="text-gray-500 text-sm">/ mois</span>
-                </div>
-                <p className="text-xs text-gray-400 mb-6 leading-relaxed">
-                  Pour les grands établissements multi-points de vente exigeant du temps réel unifié.
-                </p>
-                <div className="border-t border-gray-800/60 my-4" />
-                <ul className="space-y-3.5 text-xs text-gray-300">
-                  <li className="flex items-center gap-2.5">
-                    <span className="w-1.5 h-1.5 bg-purple-500 rounded-full" />
-                    Toutes les fonctions Premium incluses
-                  </li>
-                  <li className="flex items-center gap-2.5">
-                    <span className="w-1.5 h-1.5 bg-purple-500 rounded-full" />
-                    Synchronisation multi-appareils en temps réel
-                  </li>
-                  <li className="flex items-center gap-2.5">
-                    <span className="w-1.5 h-1.5 bg-purple-500 rounded-full" />
-                    Multi-points de vente (comptoirs & cuisines)
-                  </li>
-                  <li className="flex items-center gap-2.5">
-                    <span className="w-1.5 h-1.5 bg-purple-500 rounded-full" />
-                    Sauvegarde automatique continue sur le Cloud
-                  </li>
-                  <li className="flex items-center gap-2.5 text-purple-400 font-semibold">
-                    <span className="w-1.5 h-1.5 bg-purple-500 rounded-full" />
-                    Support technique VIP 24h/7j
-                  </li>
-                </ul>
-              </div>
-              <button 
-                onClick={onEnterApp}
-                className="w-full py-4 mt-8 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-2xl transition-colors text-sm cursor-pointer border border-purple-500/20"
-              >
-                Créer un Espace Ultra
-              </button>
-            </div>
-
           </div>
         </div>
       </section>

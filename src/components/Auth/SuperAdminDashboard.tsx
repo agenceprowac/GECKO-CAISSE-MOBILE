@@ -14,7 +14,7 @@ import {
 import type { SubscriptionPlan, Tenant } from '../../types';
 
 export const SuperAdminDashboard: React.FC = () => {
-  const { tenants, users, sales, deleteTenant, updateTenantSubscription, showNotification, setCurrentUser, setHasEnteredApp } = usePOSStore();
+  const { tenants, users, sales, deleteTenant, updateTenantSubscription, showNotification, logoutTenant, setHasEnteredApp } = usePOSStore();
   
   const [filterPlan, setFilterPlan] = useState<'ALL' | SubscriptionPlan>('ALL');
   const [filterStatus, setFilterStatus] = useState<'ALL' | 'ACTIVE' | 'SUSPENDED'>('ALL');
@@ -67,7 +67,7 @@ export const SuperAdminDashboard: React.FC = () => {
   };
 
   const handleLogout = () => {
-    setCurrentUser(null);
+    logoutTenant();
     setHasEnteredApp(false);
   };
 
