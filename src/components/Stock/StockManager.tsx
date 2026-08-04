@@ -1,0 +1,304 @@
+import React, { useState } from 'react';
+import { X, PackagePlus, Plus, Minus, Check, Edit2, Trash2 } from 'lucide-react';
+import { usePOSStore } from '../../store';
+import { mockCategories } from '../../data/mockData';
+import type { Product } from '../../types';
+
+interface StockManagerProps {
+  onClose: () => void;
+}
+
+export const StockManager: React.FC<StockManagerProps> = ({ onClose }) => {
+  const { getProductsByTenant, updateStock, addProduct, updateProduct, deleteProduct, showNotification } = usePOSStore();
+  const products = getProductsByTenant();
+  const [search, setSearch] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  
+  // Form states
+  const [newName, setNewName] = useState('');
+  const [newPrice, setNewPrice] = useState('');
+  const [newStock, setNewStock] = useState('0');
+  const [newCategoryId, setNewCategoryId] = useState(mockCategories[0].id);
+  const [newImage, setNewImage] = useState('');
+
+  const filteredProducts = products.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
+
+  const handleStockAdd = (productId: string, quantity: number) => {
+    updateStock(productId, quantity);
+  };
+
+  const handleEditClick = (product: Product) => {
+    setEditingProduct(product);
+    setNewName(product.name);
+    setNewPrice(product.price.toString());
+    setNewStock(product.stock.toString());
+    setNewCategoryId(product.categoryId);
+    setNewImage(product.image || '');
+    setIsCreating(true);
+  };
+
+  const handleDeleteClick = (productId: string) => {
+    showNotification(
+      'confirm',
+      'Voulez-vous vraiment supprimer cet article ?',
+      () => deleteProduct(productId)
+    );
+  };
+
+  const handleCreateOrUpdate = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newName || !newPrice) return;
+    
+    if (editingProduct) {
+      updateProduct({
+        id: editingProduct.id,
+        name: newName,
+        price: parseFloat(newPrice) || 0,
+        stock: parseInt(newStock, 10) || 0,
+        categoryId: newCategoryId,
+        image: newImage || undefined
+      });
+    } else {
+      addProduct({
+        name: newName,
+        price: parseFloat(newPrice) || 0,
+        stock: parseInt(newStock, 10) || 0,
+        categoryId: newCategoryId,
+        image: newImage || undefined
+      });
+    }
+    
+    // Reset Form
+    setNewName('');
+    setNewPrice('');
+    setNewStock('0');
+    setNewImage('');
+    setEditingProduct(null);
+    setIsCreating(false);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/80 flex justify-center items-center z-50 p-4 overflow-y-auto">
+      <div className="bg-dark-800 rounded-3xl w-full max-w-2xl flex flex-col h-[85vh] shadow-2xl">
+        <div className="flex justify-between items-center p-6 border-b border-dark-700 bg-dark-900 rounded-t-3xl shrink-0">
+          <div className="flex items-center gap-3">
+            <PackagePlus size={28} className="text-primary" />
+            <h2 className="text-2xl font-bold">
+              {isCreating ? (editingProduct ? 'Modifier l\'Article' : 'Nouvel Article') : 'Gestion des Articles & Stocks'}
+            </h2>
+          </div>
+          <button onClick={onClose} className="p-2 bg-dark-800 rounded-full text-gray-400 hover:text-white">
+            <X size={24} />
+          </button>
+        </div>
+        
+        {!isCreating ? (
+          <>
+            <div className="p-4 border-b border-dark-700 bg-dark-900 shrink-0 flex gap-4">
+              <input 
+                type="text" 
+                placeholder="Rechercher un produit..." 
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="flex-1 px-4 py-3 bg-dark-800 border border-dark-700 rounded-xl focus:outline-none focus:border-primary transition-colors text-white"
+              />
+              <button 
+                onClick={() => {
+                  setEditingProduct(null);
+                  setNewName('');
+                  setNewPrice('');
+                  setNewStock('0');
+                  setNewImage('');
+                  setIsCreating(true);
+                }}
+                className="px-6 py-3 bg-primary text-white rounded-xl font-bold hover:bg-primary/90 transition-colors flex items-center gap-2 shrink-0"
+              >
+                <Plus size={20} />
+                Créer
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
+              {filteredProducts.map(product => (
+                <div key={product.id} className="flex flex-col bg-dark-900 border border-dark-700 rounded-2xl p-4 gap-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      {product.image ? (
+                        <img src={product.image} alt={product.name} className="w-14 h-14 rounded-xl object-cover border border-dark-700" />
+                      ) : (
+                        <div className="w-14 h-14 bg-dark-800 rounded-xl border border-dark-700 flex items-center justify-center text-gray-500 font-bold">
+                          N/A
+                        </div>
+                      )}
+                      <div>
+                        <p className="font-bold text-white text-lg">{product.name}</p>
+                        <p className="text-sm text-gray-400 mt-0.5">
+                          Prix : {Math.round(product.price).toLocaleString('fr-FR')} F CFA
+                        </p>
+                        <p className={`text-sm mt-1 font-semibold ${product.stock > 10 ? 'text-green-400' : 'text-red-400'}`}>
+                          Stock actuel : {product.stock}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleEditClick(product)}
+                        className="p-2.5 bg-dark-700 rounded-xl text-blue-400 hover:bg-dark-600 transition-colors"
+                        title="Modifier"
+                      >
+                        <Edit2 size={18} />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteClick(product.id)}
+                        className="p-2.5 bg-dark-700 rounded-xl text-red-500 hover:bg-dark-600 transition-colors"
+                        title="Supprimer"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {/* Stock adjuster buttons */}
+                  <div className="flex items-center justify-end gap-2 border-t border-dark-800 pt-3">
+                    <span className="text-sm text-gray-400 mr-auto">Ajustement rapide :</span>
+                    <button 
+                      onClick={() => handleStockAdd(product.id, -1)}
+                      className="w-10 h-10 rounded-xl bg-dark-800 flex items-center justify-center text-red-400 hover:bg-dark-700 transition-colors active:scale-95 shrink-0"
+                    >
+                      <Minus size={20} />
+                    </button>
+                    <button 
+                      onClick={() => handleStockAdd(product.id, 1)}
+                      className="w-10 h-10 rounded-xl bg-dark-800 flex items-center justify-center text-green-400 hover:bg-dark-700 transition-colors active:scale-95 shrink-0"
+                    >
+                      <Plus size={20} />
+                    </button>
+                    <button 
+                      onClick={() => handleStockAdd(product.id, 10)}
+                      className="px-3 h-10 rounded-xl bg-primary/20 text-primary font-bold hover:bg-primary/30 transition-colors active:scale-95 shrink-0"
+                    >
+                      +10
+                    </button>
+                    <button 
+                      onClick={() => handleStockAdd(product.id, 24)}
+                      className="px-3 h-10 rounded-xl bg-primary/20 text-primary font-bold hover:bg-primary/30 transition-colors active:scale-95 shrink-0"
+                    >
+                      +24
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {filteredProducts.length === 0 && (
+                <div className="text-center text-gray-500 py-10">Aucun produit trouvé.</div>
+              )}
+            </div>
+          </>
+        ) : (
+          <div className="flex-1 overflow-y-auto p-6 bg-dark-900">
+            <form onSubmit={handleCreateOrUpdate} className="flex flex-col gap-6 max-w-md mx-auto">
+              <div>
+                <label className="block text-gray-400 mb-2 font-medium">Nom de l'article</label>
+                <input 
+                  type="text" 
+                  required
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  className="w-full px-4 py-3 bg-dark-800 border border-dark-700 rounded-xl focus:outline-none focus:border-primary text-white"
+                  placeholder="Ex: Guinness 33cl"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-400 mb-2 font-medium">Prix (F CFA)</label>
+                <input 
+                  type="number"
+                  required
+                  value={newPrice}
+                  onChange={(e) => setNewPrice(e.target.value)}
+                  className="w-full px-4 py-3 bg-dark-800 border border-dark-700 rounded-xl focus:outline-none focus:border-primary text-white"
+                  placeholder="Ex: 2000"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-400 mb-2 font-medium">Catégorie</label>
+                <select 
+                  value={newCategoryId}
+                  onChange={(e) => setNewCategoryId(e.target.value)}
+                  className="w-full px-4 py-3 bg-dark-800 border border-dark-700 rounded-xl focus:outline-none focus:border-primary text-white font-semibold"
+                >
+                  {mockCategories.map(cat => (
+                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-gray-400 mb-2 font-medium">Stock</label>
+                <input 
+                  type="number"
+                  required
+                  value={newStock}
+                  onChange={(e) => setNewStock(e.target.value)}
+                  className="w-full px-4 py-3 bg-dark-800 border border-dark-700 rounded-xl focus:outline-none focus:border-primary text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-400 mb-2 font-medium">Image de l'article</label>
+                <div className="flex flex-col gap-4">
+                  {newImage && (
+                    <div className="relative w-32 h-32 rounded-2xl overflow-hidden border border-dark-700">
+                      <img src={newImage} alt="Aperçu" className="w-full h-full object-cover" />
+                      <button 
+                        type="button" 
+                        onClick={() => setNewImage('')}
+                        className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-lg"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  )}
+                  <input 
+                    type="file" 
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          setNewImage(reader.result as string);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    className="w-full text-sm text-gray-400 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-primary/20 file:text-primary hover:file:bg-primary/30 file:cursor-pointer cursor-pointer bg-dark-800 border border-dark-700 p-2 rounded-xl"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-4 mt-4">
+                <button 
+                  type="button"
+                  onClick={() => setIsCreating(false)}
+                  className="flex-1 px-4 py-4 bg-dark-700 text-white rounded-xl font-bold hover:bg-dark-600 transition-colors"
+                >
+                  Annuler
+                </button>
+                <button 
+                  type="submit"
+                  className="flex-1 px-4 py-4 bg-primary text-white rounded-xl font-bold hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
+                >
+                  <Check size={20} />
+                  Enregistrer
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
