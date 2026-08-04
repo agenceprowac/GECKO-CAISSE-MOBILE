@@ -36,7 +36,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   const allowedMenuItems = menuItems.filter(item => 
-    currentUser && item.allowedRoles.includes(currentUser.role)
+    currentUser && currentUser.role !== 'SUPER_ADMIN' && item.allowedRoles.includes(currentUser.role as any)
   );
 
   const canManageStock = currentUser?.role === 'ADMIN' || currentUser?.role === 'BARMAN';

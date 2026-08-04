@@ -4,7 +4,7 @@ import { Plus, Edit2, Trash2, Check, LayoutGrid } from 'lucide-react';
 import type { Table } from '../../types';
 
 export const TablesPage: React.FC = () => {
-  const { getTablesByTenant, addTable, updateTable, deleteTable, showNotification } = usePOSStore();
+  const { currentTenant, getTablesByTenant, addTable, updateTable, deleteTable, showNotification } = usePOSStore();
   const tables = getTablesByTenant();
   const [isEditing, setIsEditing] = useState(false);
   const [editingTable, setEditingTable] = useState<Table | null>(null);
@@ -31,6 +31,15 @@ export const TablesPage: React.FC = () => {
     if (editingTable) {
       updateTable({ id: editingTable.id, name: tableName });
     } else {
+      // Restriction de plan Standard : Max 5 tables
+      if (currentTenant?.plan === 'STANDARD' && tables.length >= 5) {
+        showNotification(
+          'alert', 
+          `Limite de 5 tables atteinte pour le Plan Standard de "${currentTenant.establishmentName}". Veuillez passer à un plan supérieur.`
+        );
+        return;
+      }
+      
       addTable(tableName);
     }
 

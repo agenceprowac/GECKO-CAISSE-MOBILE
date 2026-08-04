@@ -18,7 +18,7 @@ export const UsersPage: React.FC = () => {
     setEditingUser(user);
     setUserName(user.name);
     setPinCode(user.pinCode);
-    setRole(user.role);
+    setRole(user.role as any);
     setIsEditing(true);
   };
 
@@ -50,8 +50,10 @@ export const UsersPage: React.FC = () => {
     setIsEditing(false);
   };
 
-  const getRolePermissions = (roleName: 'ADMIN' | 'BARMAN' | 'WAITER') => {
+  const getRolePermissions = (roleName: 'SUPER_ADMIN' | 'ADMIN' | 'BARMAN' | 'WAITER') => {
     switch (roleName) {
+      case 'SUPER_ADMIN':
+        return 'Accès global SaaS Cloud (Gestion de tous les établissements, plans et abonnements)';
       case 'ADMIN':
         return 'Accès complet (Caisse, Stocks, Tarifs, Rapports, Tables, Utilisateurs)';
       case 'BARMAN':

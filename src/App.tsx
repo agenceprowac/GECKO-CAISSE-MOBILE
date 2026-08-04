@@ -3,6 +3,7 @@ import { POSLayout } from './components/POS/POSLayout';
 import { LockScreen } from './components/Auth/LockScreen';
 import { LandingPage } from './components/UI/LandingPage';
 import { TenantAuth } from './components/Auth/TenantAuth';
+import { SuperAdminDashboard } from './components/Auth/SuperAdminDashboard';
 import { usePOSStore } from './store';
 
 function App() {
@@ -66,6 +67,10 @@ function App() {
 
   if (!currentUser) {
     return <LockScreen />;
+  }
+
+  if (currentUser.role === 'SUPER_ADMIN') {
+    return <SuperAdminDashboard />;
   }
 
   return (

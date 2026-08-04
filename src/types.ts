@@ -1,8 +1,12 @@
+export type SubscriptionPlan = 'STANDARD' | 'PREMIUM' | 'ULTRA';
+
 export type Tenant = {
   id: string;
   email: string;
   establishmentName: string;
   adminPin: string;
+  plan: SubscriptionPlan;
+  status: 'ACTIVE' | 'SUSPENDED';
 };
 
 export type Category = {
@@ -38,7 +42,7 @@ export type User = {
   id: string;
   name: string;
   pinCode: string;
-  role: 'ADMIN' | 'BARMAN' | 'WAITER';
+  role: 'SUPER_ADMIN' | 'ADMIN' | 'BARMAN' | 'WAITER';
   tenantId?: string;
 };
 

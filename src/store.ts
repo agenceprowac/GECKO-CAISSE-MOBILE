@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { OrderItem, Product, Table, User, Sale, Tenant, StockHistoryEntry } from './types';
+import type { OrderItem, Product, Table, User, Sale, Tenant, StockHistoryEntry, SubscriptionPlan } from './types';
 
 interface POSState {
   // SaaS Tenants
@@ -9,6 +9,7 @@ interface POSState {
   loginTenant: (email: string) => Tenant | null;
   logoutTenant: () => void;
   deleteTenant: (tenantId: string) => void;
+  updateTenantSubscription: (tenantId: string, plan: SubscriptionPlan, status: 'ACTIVE' | 'SUSPENDED') => void;
   hasEnteredApp: boolean;
   setHasEnteredApp: (val: boolean) => void;
 
@@ -89,6 +90,7 @@ const loadPersistedData = () => {
   // Initialisation d'un établissement de démonstration universel par défaut
   const demoTenantId = 'tnt_demo_gecko';
   const demoUserId = 'usr_demo_admin';
+  const superAdminUserId = 'usr_super_admin';
   
   return {
     tenants: [
@@ -96,7 +98,9 @@ const loadPersistedData = () => {
         id: demoTenantId,
         email: 'test@test.com',
         establishmentName: 'Le Gecko Bar',
-        adminPin: '1111'
+        adminPin: '1111',
+        plan: 'STANDARD',
+        status: 'ACTIVE'
       }
     ],
     currentTenant: null,
@@ -109,6 +113,12 @@ const loadPersistedData = () => {
         pinCode: '1111',
         role: 'ADMIN',
         tenantId: demoTenantId
+      },
+      {
+        id: superAdminUserId,
+        name: 'Lionel Super-Admin',
+        pinCode: '9999',
+        role: 'SUPER_ADMIN'
       }
     ],
     sales: [],
@@ -214,7 +224,9 @@ export const usePOSStore = create<POSState>((set, get) => {
         id: 'tnt_' + crypto.randomUUID(),
         email: emailLower,
         establishmentName,
-        adminPin
+        adminPin,
+        plan: 'STANDARD',
+        status: 'ACTIVE'
       };
 
       const updatedTenants = [...get().tenants, newTenant];
@@ -254,6 +266,48 @@ export const usePOSStore = create<POSState>((set, get) => {
 
     loginTenant: (email) => {
       const emailLower = email.toLowerCase().trim();
+
+      // Intercepter la connexion Super-Admin
+      if (emailLower === 'vithianolionel@gmail.com') {
+        const superAdminTenant: Tenant = {
+          id: 'tnt_super_admin',
+          email: 'vithianolionel@gmail.com',
+          establishmentName: 'Administration Cloud',
+          adminPin: '9999',
+          plan: 'ULTRA',
+          status: 'ACTIVE'
+        };
+
+        const superAdminUser: User = {
+          id: 'usr_super_admin',
+          name: 'Lionel Super-Admin',
+          pinCode: '9999',
+          role: 'SUPER_ADMIN'
+        };
+
+        // Si l'utilisateur n'est pas déjà dans le store, l'y ajouter
+        const usersExist = get().users.some(u => u.role === 'SUPER_ADMIN');
+        const updatedUsers = usersExist ? get().users : [...get().users, superAdminUser];
+
+        set({ 
+          currentTenant: superAdminTenant, 
+          currentUser: superAdminUser, // Se connecter directement en Super-Admin
+          users: updatedUsers,
+          hasEnteredApp: true, 
+          cart: [], 
+          currentTable: null, 
+          total: 0 
+        });
+
+        persist({ 
+          users: updatedUsers,
+          currentTenant: superAdminTenant, 
+          hasEnteredApp: true 
+        });
+
+        return superAdminTenant;
+      }
+
       let tenant = get().tenants.find(t => t.email === emailLower) || null;
       
       // Injection de secours pour test@test.com si le localStorage est vide ou corrompu
@@ -261,14 +315,16 @@ export const usePOSStore = create<POSState>((set, get) => {
         const demoTenantId = 'tnt_demo_gecko';
         const demoUserId = 'usr_demo_admin';
         
-        const demoTenant = {
+        const demoTenant: Tenant = {
           id: demoTenantId,
           email: 'test@test.com',
           establishmentName: 'Le Gecko Bar',
-          adminPin: '1111'
+          adminPin: '1111',
+          plan: 'STANDARD',
+          status: 'ACTIVE'
         };
 
-        const demoUser = {
+        const demoUser: User = {
           id: demoUserId,
           name: 'Lionel Admin',
           pinCode: '1111',
@@ -285,6 +341,12 @@ export const usePOSStore = create<POSState>((set, get) => {
       }
 
       if (tenant) {
+        // Bloquer la connexion si l'établissement est suspendu
+        if (tenant.status === 'SUSPENDED') {
+          get().showNotification('alert', 'Votre espace de caisse a été suspendu pour défaut de paiement. Veuillez contacter l\'administrateur SaaS.');
+          return null;
+        }
+
         set({ currentTenant: tenant, currentUser: null, hasEnteredApp: true, cart: [], currentTable: null, total: 0 });
         persist({ 
           tenants: get().tenants,
@@ -333,6 +395,15 @@ export const usePOSStore = create<POSState>((set, get) => {
         currentTenant: null,
         hasEnteredApp: false
       });
+    },
+
+    updateTenantSubscription: (tenantId, plan, status) => {
+      const updatedTenants = get().tenants.map(t => 
+        t.id === tenantId ? { ...t, plan, status } : t
+      );
+
+      set({ tenants: updatedTenants });
+      persist({ tenants: updatedTenants });
     },
 
     // Getters filtered by active tenant
