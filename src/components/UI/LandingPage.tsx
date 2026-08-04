@@ -75,7 +75,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
 
         {/* Mobile Nav Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden px-4 pt-2 pb-6 bg-gray-900 border-b border-gray-800 flex flex-col gap-4">
+          <div className="absolute top-20 left-0 right-0 z-50 md:hidden px-4 pt-2 pb-6 bg-gray-950/95 backdrop-blur-lg border-b border-gray-800 flex flex-col gap-4 shadow-2xl animate-in fade-in slide-in-from-top-4 duration-200">
             <a 
               href="#features" 
               onClick={() => setMobileMenuOpen(false)}

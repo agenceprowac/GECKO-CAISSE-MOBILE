@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { ProductGrid } from './ProductGrid';
 import { Cart } from './Cart';
 import { PaymentModal } from '../Payment/PaymentModal';
@@ -19,14 +19,6 @@ export const POSLayout: React.FC = () => {
   const [showSidebar, setShowSidebar] = useState(false);
   const [showStockManager, setShowStockManager] = useState(false);
   
-  // Verrouiller le défilement global du body lors de l'accès au POS
-  useEffect(() => {
-    document.body.classList.add('overflow-hidden', 'h-screen');
-    return () => {
-      document.body.classList.remove('overflow-hidden', 'h-screen');
-    };
-  }, []);
-
   // Navigation views: 'pos' | 'reports' | 'users' | 'tables' | 'profile'
   const [currentView, setCurrentView] = useState<'pos' | 'reports' | 'users' | 'tables' | 'profile'>('pos');
   
@@ -69,7 +61,7 @@ export const POSLayout: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 flex flex-col bg-dark-900 text-white overflow-hidden selection:bg-primary/30">
+    <div className="flex flex-col h-screen bg-dark-900 text-white overflow-hidden selection:bg-primary/30">
       {/* Top Navbar */}
       <header className="h-16 bg-dark-800 border-b border-dark-700 flex items-center justify-between px-4 shrink-0">
         <div className="flex items-center gap-4">
