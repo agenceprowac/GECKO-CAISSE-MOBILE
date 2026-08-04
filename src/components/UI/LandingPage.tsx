@@ -504,16 +504,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
         </div>
       </footer>
 
-      {/* Bouton flottant d'accès rapide pour les tests */}
-      <div className="fixed bottom-6 left-6 z-40">
-        <button
-          onClick={onEnterApp}
-          className="px-6 py-4 bg-gradient-to-r from-red-600 to-orange-600 text-white font-bold rounded-2xl shadow-xl shadow-red-500/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 border border-red-500/30 animate-bounce"
-        >
-          <span className="w-2.5 h-2.5 rounded-full bg-white animate-ping" />
-          ACCÈS RAPIDE TEST CAISSE
-        </button>
-      </div>
 
       {/* Download Modal / Feedback */}
       {downloadModal.isOpen && (
