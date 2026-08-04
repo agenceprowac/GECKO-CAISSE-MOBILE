@@ -13,8 +13,9 @@ function App() {
   
   const setOnlineStatus = usePOSStore(state => state.setOnlineStatus);
   const syncSalesWithServer = usePOSStore(state => state.syncSalesWithServer);
+  const setDeferredPrompt = usePOSStore(state => state.setDeferredPrompt);
 
-  // Network offline/online event listeners
+  // Network & PWA event listeners
   useEffect(() => {
     const handleOnline = () => {
       setOnlineStatus(true);
@@ -26,8 +27,16 @@ function App() {
       setOnlineStatus(false);
     };
 
+    const handleBeforeInstallPrompt = (e: Event) => {
+      // Empêcher l'affichage automatique de la bannière système par défaut
+      e.preventDefault();
+      // Stocker l'événement pour un déclenchement ultérieur au clic du bouton
+      setDeferredPrompt(e);
+    };
+
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
     // Première synchro si on démarre en ligne
     if (navigator.onLine) {
@@ -37,8 +46,9 @@ function App() {
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     };
-  }, [setOnlineStatus, syncSalesWithServer]);
+  }, [setOnlineStatus, syncSalesWithServer, setDeferredPrompt]);
 
   if (!hasEnteredApp) {
     return <LandingPage onEnterApp={() => setHasEnteredApp(true)} />;

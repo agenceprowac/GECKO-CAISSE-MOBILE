@@ -1,9 +1,12 @@
 import React from 'react';
 import { usePOSStore } from '../../store';
-import { User, DollarSign, ShoppingBag, CreditCard, Banknote, Smartphone, Clock } from 'lucide-react';
+import { User, DollarSign, ShoppingBag, CreditCard, Banknote, Smartphone, Clock, ShieldAlert } from 'lucide-react';
 
 export const ProfilePage: React.FC = () => {
   const currentUser = usePOSStore(state => state.currentUser);
+  const currentTenant = usePOSStore(state => state.currentTenant);
+  const deleteTenant = usePOSStore(state => state.deleteTenant);
+  const showNotification = usePOSStore(state => state.showNotification);
   const getSalesByTenant = usePOSStore(state => state.getSalesByTenant);
   const sales = getSalesByTenant();
 
@@ -140,6 +143,47 @@ export const ProfilePage: React.FC = () => {
             </div>
           )}
         </div>
+
+        {/* Section Gestion de l'Établissement & Abonnement (Seulement pour l'Administrateur) */}
+        {currentUser?.role === 'ADMIN' && currentTenant && (
+          <div className="p-6 bg-red-950/20 border border-red-500/20 rounded-3xl shadow-xl flex flex-col gap-6 mt-4">
+            <div className="flex items-center gap-3 text-red-400 border-b border-red-500/10 pb-4">
+              <ShieldAlert size={24} />
+              <h3 className="text-lg font-bold text-white">Gestion de l'Établissement & Abonnement</h3>
+            </div>
+            
+            <div className="space-y-2 text-sm text-gray-400">
+              <p>
+                <strong>Établissement :</strong> <span className="text-white">{currentTenant.establishmentName}</span>
+              </p>
+              <p>
+                <strong>Email Propriétaire :</strong> <span className="text-white">{currentTenant.email}</span>
+              </p>
+              <p>
+                <strong>Statut de l'abonnement :</strong> <span className="text-emerald-400 font-bold bg-emerald-400/10 px-2 py-0.5 rounded border border-emerald-400/20">Actif (SaaS)</span>
+              </p>
+            </div>
+
+            <div className="p-4 bg-red-950/40 rounded-2xl border border-red-950 text-xs text-red-300 leading-relaxed">
+              <strong>Attention :</strong> Cliquer sur le bouton ci-dessous annulera immédiatement votre abonnement. Cela supprimera définitivement votre espace de caisse, votre catalogue d'articles, la liste de vos tables, vos profils d'employés et l'ensemble de l'historique de vos ventes de cet appareil. Cette action est irréversible.
+            </div>
+
+            <button
+              onClick={() => {
+                showNotification(
+                  'confirm',
+                  `Êtes-vous sûr de vouloir résilier votre abonnement et supprimer définitivement l'espace "${currentTenant.establishmentName}" ? Toutes vos données seront effacées.`,
+                  () => {
+                    deleteTenant(currentTenant.id);
+                  }
+                );
+              }}
+              className="w-full sm:w-auto px-6 py-3.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-2xl transition-all shadow-lg shadow-red-600/10 flex items-center justify-center gap-2 cursor-pointer mt-2"
+            >
+              Se désabonner & Supprimer l'espace
+            </button>
+          </div>
+        )}
 
       </div>
     </div>

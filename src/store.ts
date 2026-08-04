@@ -8,8 +8,13 @@ interface POSState {
   registerTenant: (email: string, establishmentName: string, adminPin: string) => boolean;
   loginTenant: (email: string) => Tenant | null;
   logoutTenant: () => void;
+  deleteTenant: (tenantId: string) => void;
   hasEnteredApp: boolean;
   setHasEnteredApp: (val: boolean) => void;
+
+  // PWA Install Prompt
+  deferredPrompt: any;
+  setDeferredPrompt: (prompt: any) => void;
 
   // Offline / Network Sync System
   isOnline: boolean;
@@ -119,6 +124,9 @@ export const usePOSStore = create<POSState>((set, get) => {
     total: 0,
     notification: null,
     
+    deferredPrompt: null,
+    setDeferredPrompt: (prompt) => set({ deferredPrompt: prompt }),
+
     isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
     isSyncing: false,
 
@@ -224,6 +232,40 @@ export const usePOSStore = create<POSState>((set, get) => {
     logoutTenant: () => {
       set({ currentTenant: null, currentUser: null, cart: [], currentTable: null, total: 0 });
       persist({ currentTenant: null });
+    },
+
+    deleteTenant: (tenantId) => {
+      const state = get();
+      
+      const updatedTenants = state.tenants.filter(t => t.id !== tenantId);
+      const updatedUsers = state.users.filter(u => u.tenantId !== tenantId);
+      const updatedProducts = state.products.filter(p => p.tenantId !== tenantId);
+      const updatedTables = state.tables.filter(t => t.tenantId !== tenantId);
+      const updatedSales = state.sales.filter(s => s.tenantId !== tenantId);
+
+      set({
+        tenants: updatedTenants,
+        users: updatedUsers,
+        products: updatedProducts,
+        tables: updatedTables,
+        sales: updatedSales,
+        currentTenant: null,
+        currentUser: null,
+        hasEnteredApp: false, // Retourner à la landing page
+        cart: [],
+        currentTable: null,
+        total: 0
+      });
+
+      persist({
+        tenants: updatedTenants,
+        users: updatedUsers,
+        products: updatedProducts,
+        tables: updatedTables,
+        sales: updatedSales,
+        currentTenant: null,
+        hasEnteredApp: false
+      });
     },
 
     // Getters filtered by active tenant

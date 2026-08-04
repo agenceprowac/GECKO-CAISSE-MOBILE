@@ -15,6 +15,7 @@ import {
   Play,
   Apple
 } from 'lucide-react';
+import { usePOSStore } from '../../store';
 
 interface LandingPageProps {
   onEnterApp: () => void;
@@ -28,12 +29,34 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
   });
   const [faqOpen, setFaqOpen] = useState<number | null>(null);
 
+  const { deferredPrompt, setDeferredPrompt } = usePOSStore();
+
+  // Détecter si l'appareil est sous iOS (pour afficher la bulle d'aide Safari)
+  const isIOS = typeof window !== 'undefined' && 
+    (/iPad|iPhone|iPod/.test(navigator.userAgent) || 
+     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+
   const toggleFaq = (index: number) => {
     setFaqOpen(faqOpen === index ? null : index);
   };
 
-  const handleDownload = (platform: 'android' | 'ios') => {
-    setDownloadModal({ isOpen: true, platform });
+  const handleDownload = async (platform: 'android' | 'ios') => {
+    if (platform === 'android' && deferredPrompt) {
+      // Déclencher directement l'invite d'installation système de Chrome
+      deferredPrompt.prompt();
+      
+      // Attendre la réponse de l'utilisateur
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        console.log('L\'utilisateur a installé l\'application');
+      }
+      
+      // On nettoie le prompt car il ne peut être utilisé qu'une seule fois
+      setDeferredPrompt(null);
+    } else {
+      // Sinon (ou si c'est iOS), afficher la modal d'instructions classiques
+      setDownloadModal({ isOpen: true, platform });
+    }
   };
 
   return (
@@ -602,6 +625,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Bulle d'aide d'installation intelligente pour Safari sur iOS */}
+      {isIOS && typeof window !== 'undefined' && !(window.navigator as any).standalone && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-sm bg-gray-900 border border-blue-500/30 p-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-bounce">
+          <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0">
+            <Apple size={20} />
+          </div>
+          <div className="flex-1">
+            <h4 className="text-xs font-bold text-white">Installer sur cet iPhone</h4>
+            <p className="text-[10px] text-gray-400 mt-0.5">
+              Appuyez sur <span className="bg-gray-800 px-1 py-0.5 rounded text-[8px] text-white">Partager ↥</span> puis <span className="text-white font-semibold">Sur l'écran d'accueil</span>.
+            </p>
+          </div>
+          <div className="text-blue-400 shrink-0 text-lg animate-pulse">↓</div>
         </div>
       )}
     </div>
