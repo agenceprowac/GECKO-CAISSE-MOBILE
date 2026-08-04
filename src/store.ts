@@ -369,10 +369,10 @@ export const usePOSStore = create<POSState>((set, get) => {
       const state = get();
 
       // Intercepter la connexion Super-Admin
-      if (emailLower === 'vithianolionel@gmail.com') {
+      if (emailLower === 'admin@gecko.com') {
         const superAdminTenant: Tenant = {
           id: 'tnt_super_admin',
-          email: 'vithianolionel@gmail.com',
+          email: 'admin@gecko.com',
           establishmentName: 'Administration Cloud',
           adminPin: '9999',
           plan: 'ULTRA',

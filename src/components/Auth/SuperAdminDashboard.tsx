@@ -89,7 +89,7 @@ export const SuperAdminDashboard: React.FC = () => {
         <div className="flex items-center gap-4">
           <div className="hidden md:flex flex-col text-right">
             <span className="text-xs font-bold text-white">Lionel VITHIANO</span>
-            <span className="text-[10px] text-gray-400">super-admin@gecko.com</span>
+            <span className="text-[10px] text-gray-400">admin@gecko.com</span>
           </div>
           <button 
             onClick={handleLogout}
