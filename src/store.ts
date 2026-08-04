@@ -77,17 +77,40 @@ const loadPersistedData = () => {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
-      return JSON.parse(saved);
+      const parsed = JSON.parse(saved);
+      // S'assurer que le tableau stockHistory existe s'il n'a pas été sauvegardé auparavant
+      if (!parsed.stockHistory) parsed.stockHistory = [];
+      return parsed;
     }
   } catch (e) {
     console.error("Error loading localStorage data", e);
   }
+
+  // Initialisation d'un établissement de démonstration universel par défaut
+  const demoTenantId = 'tnt_demo_gecko';
+  const demoUserId = 'usr_demo_admin';
+  
   return {
-    tenants: [],
+    tenants: [
+      {
+        id: demoTenantId,
+        email: 'test@test.com',
+        establishmentName: 'Le Gecko Bar',
+        adminPin: '1111'
+      }
+    ],
     currentTenant: null,
     products: [],
     tables: [],
-    users: [],
+    users: [
+      {
+        id: demoUserId,
+        name: 'Lionel Admin',
+        pinCode: '1111',
+        role: 'ADMIN',
+        tenantId: demoTenantId
+      }
+    ],
     sales: [],
     stockHistory: [],
     hasEnteredApp: false
@@ -231,10 +254,44 @@ export const usePOSStore = create<POSState>((set, get) => {
 
     loginTenant: (email) => {
       const emailLower = email.toLowerCase().trim();
-      const tenant = get().tenants.find(t => t.email === emailLower) || null;
+      let tenant = get().tenants.find(t => t.email === emailLower) || null;
+      
+      // Injection de secours pour test@test.com si le localStorage est vide ou corrompu
+      if (!tenant && emailLower === 'test@test.com') {
+        const demoTenantId = 'tnt_demo_gecko';
+        const demoUserId = 'usr_demo_admin';
+        
+        const demoTenant = {
+          id: demoTenantId,
+          email: 'test@test.com',
+          establishmentName: 'Le Gecko Bar',
+          adminPin: '1111'
+        };
+
+        const demoUser = {
+          id: demoUserId,
+          name: 'Lionel Admin',
+          pinCode: '1111',
+          role: 'ADMIN' as const,
+          tenantId: demoTenantId
+        };
+
+        set({
+          tenants: [...get().tenants, demoTenant],
+          users: [...get().users, demoUser]
+        });
+
+        tenant = demoTenant;
+      }
+
       if (tenant) {
         set({ currentTenant: tenant, currentUser: null, hasEnteredApp: true, cart: [], currentTable: null, total: 0 });
-        persist({ currentTenant: tenant, hasEnteredApp: true });
+        persist({ 
+          tenants: get().tenants,
+          users: get().users,
+          currentTenant: tenant, 
+          hasEnteredApp: true 
+        });
       }
       return tenant;
     },
