@@ -230,6 +230,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   } catch (error: any) {
     console.error('Erreur API de Synchronisation:', error);
-    return res.status(500).json({ error: 'Échec de la synchronisation.', details: error.message });
+    const hasDbUrl = !!process.env.DATABASE_URL;
+    return res.status(500).json({ 
+      error: 'Échec de la synchronisation (Base de données).', 
+      details: error.message,
+      configError: !hasDbUrl ? "La variable DATABASE_URL est manquante sur Vercel. Veuillez la configurer dans l'administration Vercel." : "La base de données Supabase refuse la connexion. Vérifiez le mot de passe."
+    });
   }
 }

@@ -112,6 +112,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'Action non reconnue.' });
   } catch (error: any) {
     console.error('Erreur API Tenants:', error);
-    return res.status(500).json({ error: 'Erreur interne du serveur.', details: error.message });
+    const hasDbUrl = !!process.env.DATABASE_URL;
+    return res.status(500).json({ 
+      error: 'Erreur interne du serveur (Base de données).', 
+      details: error.message,
+      configError: !hasDbUrl ? "La variable DATABASE_URL est manquante sur Vercel. Veuillez la configurer dans l'administration Vercel." : "La base de données Supabase refuse la connexion. Vérifiez le mot de passe."
+    });
   }
 }
