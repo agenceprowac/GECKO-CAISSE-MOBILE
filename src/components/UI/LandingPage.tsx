@@ -27,7 +27,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
     platform: null
   });
   const [faqOpen, setFaqOpen] = useState<number | null>(null);
-  const [downloadProgress, setDownloadProgress] = useState<number | null>(null);
 
   const toggleFaq = (index: number) => {
     setFaqOpen(faqOpen === index ? null : index);
@@ -35,26 +34,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
 
   const handleDownload = (platform: 'android' | 'ios') => {
     setDownloadModal({ isOpen: true, platform });
-    if (platform === 'android') {
-      setDownloadProgress(0);
-      const interval = setInterval(() => {
-        setDownloadProgress((prev) => {
-          if (prev === null) return null;
-          if (prev >= 100) {
-            clearInterval(interval);
-            // Déclencher le téléchargement réel du fichier APK
-            const link = document.createElement('a');
-            link.href = '/gecko-caisse.apk';
-            link.setAttribute('download', 'gecko-caisse.apk');
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            return 100;
-          }
-          return prev + 10;
-        });
-      }, 200);
-    }
   };
 
   return (
@@ -336,16 +315,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
                 <div className="w-14 h-14 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-400 mb-6">
                   <Play size={28} />
                 </div>
-                <h4 className="text-2xl font-bold mb-3">Télécharger pour Android</h4>
+                <h4 className="text-2xl font-bold mb-3">Installer sur Android</h4>
                 <p className="text-gray-400 text-sm mb-6 leading-relaxed">
-                  Profitez de l'application sur tous vos téléphones et tablettes Android. Téléchargement direct au format APK sécurisé.
+                  Profitez de l'application sur tous vos téléphones et tablettes Android. Installation directe, rapide et sécurisée sans passer par un store.
                 </p>
                 <div className="space-y-2 mb-8">
                   <div className="flex items-center gap-2 text-xs text-gray-400">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Compatible Android 8.0 et supérieur
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Compatible avec Google Chrome
                   </div>
                   <div className="flex items-center gap-2 text-xs text-gray-400">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Mise à jour automatique disponible
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Lancement plein écran et mode hors-ligne
                   </div>
                 </div>
               </div>
@@ -353,8 +332,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
                 onClick={() => handleDownload('android')}
                 className="w-full py-4 bg-emerald-600 text-white font-bold rounded-2xl hover:bg-emerald-500 transition-colors flex items-center justify-center gap-2 text-base shadow-lg shadow-emerald-600/10"
               >
-                <Download size={20} />
-                Télécharger l'APK (Android)
+                <Play size={20} />
+                Instructions d'installation Android
               </button>
             </div>
 
@@ -471,7 +450,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
           {[
             {
               q: "Comment installer l'application sur mon smartphone ?",
-              a: "Pour Android, vous pouvez télécharger directement le fichier APK depuis notre section Télécharger, puis l'ouvrir pour l'installer. Pour iOS, vous pouvez lancer notre site web dans Safari sur votre iPhone et faire 'Ajouter sur l'écran d'accueil' pour l'utiliser comme une application native."
+              a: "Pour Android, ouvrez notre site dans Google Chrome, appuyez sur le menu (trois points) et choisissez 'Ajouter à l'écran d'accueil'. Pour iOS, ouvrez notre site dans Safari sur votre iPhone et appuyez sur 'Partager' puis 'Sur l'écran d'accueil'. L'application s'installera instantanément sans passer par les stores."
             },
             {
               q: "L'application nécessite-t-elle une connexion internet constante ?",
@@ -543,7 +522,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
             <button 
               onClick={() => {
                 setDownloadModal({ isOpen: false, platform: null });
-                setDownloadProgress(null);
               }}
               className="absolute top-4 right-4 p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
             >
@@ -551,35 +529,45 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
             </button>
 
             {downloadModal.platform === 'android' ? (
-              <div className="text-center">
+              <div className="text-left">
                 <div className="w-16 h-16 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Play size={32} />
                 </div>
-                <h3 className="text-xl font-bold text-white mb-2">Téléchargement Android</h3>
-                <p className="text-gray-400 text-sm mb-6">
-                  Préparation du fichier d'installation APK de Gecko Caisse Mobile...
+                <h3 className="text-xl font-bold text-white text-center mb-2">Installation sur Android</h3>
+                <p className="text-gray-400 text-sm text-center mb-6">
+                  Suivez ces étapes simples pour ajouter l'application sur votre écran d'accueil Android.
                 </p>
 
-                {downloadProgress !== null && (
-                  <div className="w-full">
-                    <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden mb-2">
-                      <div 
-                        className="h-full bg-emerald-500 transition-all duration-200" 
-                        style={{ width: `${downloadProgress}%` }}
-                      />
-                    </div>
-                    <div className="flex justify-between text-xs text-gray-500">
-                      <span>{downloadProgress === 100 ? 'Téléchargé' : 'Téléchargement...'}</span>
-                      <span>{downloadProgress}%</span>
-                    </div>
+                <div className="space-y-4">
+                  <div className="flex gap-3">
+                    <span className="w-6 h-6 rounded-full bg-emerald-50/20 text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0">1</span>
+                    <p className="text-xs text-gray-300">
+                      Ouvrez le navigateur <strong>Google Chrome</strong> et accédez à notre application web.
+                    </p>
                   </div>
-                )}
+                  <div className="flex gap-3">
+                    <span className="w-6 h-6 rounded-full bg-emerald-50/20 text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0">2</span>
+                    <p className="text-xs text-gray-300">
+                      Appuyez sur les <strong>trois points verticaux</strong> <span className="bg-gray-800 px-1 py-0.5 rounded text-[10px]">⋮</span> en haut à droite.
+                    </p>
+                  </div>
+                  <div className="flex gap-3">
+                    <span className="w-6 h-6 rounded-full bg-emerald-50/20 text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0">3</span>
+                    <p className="text-xs text-gray-300">
+                      Sélectionnez <strong>Ajouter à l'écran d'accueil</strong> ou <strong>Installer l'application</strong>.
+                    </p>
+                  </div>
+                </div>
 
-                {downloadProgress === 100 && (
-                  <div className="mt-6 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs text-emerald-400 text-left">
-                    <strong>Installation :</strong> Ouvrez le fichier téléchargé `gecko-caisse.apk` sur votre appareil Android et autorisez l'installation depuis des sources inconnues si nécessaire.
-                  </div>
-                )}
+                <button 
+                  onClick={() => {
+                    setDownloadModal({ isOpen: false, platform: null });
+                    onEnterApp();
+                  }}
+                  className="w-full mt-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-2xl transition-colors text-sm"
+                >
+                  Lancer l'application maintenant
+                </button>
               </div>
             ) : (
               <div className="text-left">
