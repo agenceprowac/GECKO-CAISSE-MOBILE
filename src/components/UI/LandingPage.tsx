@@ -28,6 +28,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
     platform: null
   });
   const [faqOpen, setFaqOpen] = useState<number | null>(null);
+  const [showIOSBanner, setShowIOSBanner] = useState(true);
 
   const { deferredPrompt, setDeferredPrompt } = usePOSStore();
 
@@ -629,18 +630,31 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
       )}
 
       {/* Bulle d'aide d'installation intelligente pour Safari sur iOS */}
-      {isIOS && typeof window !== 'undefined' && !(window.navigator as any).standalone && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-sm bg-gray-900 border border-blue-500/30 p-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-bounce">
+      {isIOS && showIOSBanner && typeof window !== 'undefined' && !(window.navigator as any).standalone && (
+        <div 
+          onClick={() => handleDownload('ios')}
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-sm bg-gray-900 border border-blue-500/30 p-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-bounce cursor-pointer hover:border-blue-500 transition-colors"
+        >
           <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0">
             <Apple size={20} />
           </div>
-          <div className="flex-1">
-            <h4 className="text-xs font-bold text-white">Installer sur cet iPhone</h4>
-            <p className="text-[10px] text-gray-400 mt-0.5">
-              Appuyez sur <span className="bg-gray-800 px-1 py-0.5 rounded text-[8px] text-white">Partager ↥</span> puis <span className="text-white font-semibold">Sur l'écran d'accueil</span>.
+          <div className="flex-1 pr-4">
+            <h4 className="text-xs font-bold text-white">Installer l'application</h4>
+            <p className="text-[9px] text-gray-400 mt-0.5">
+              Cliquez ici pour voir comment l'ajouter sur votre écran d'accueil.
             </p>
           </div>
-          <div className="text-blue-400 shrink-0 text-lg animate-pulse">↓</div>
+          <div className="text-blue-400 shrink-0 text-sm animate-pulse mr-2">➜</div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation(); // Éviter d'ouvrir le tutoriel lors de la fermeture
+              setShowIOSBanner(false);
+            }}
+            className="absolute top-2 right-2 p-1 text-gray-400 hover:text-white rounded-full bg-gray-800/50 hover:bg-gray-800"
+            title="Masquer l'aide"
+          >
+            <X size={12} />
+          </button>
         </div>
       )}
     </div>

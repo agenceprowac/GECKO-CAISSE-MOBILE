@@ -50,7 +50,13 @@ function App() {
     };
   }, [setOnlineStatus, syncSalesWithServer, setDeferredPrompt]);
 
-  if (!hasEnteredApp) {
+  // Détecter si l'application est ouverte en mode autonome (PWA installée sur l'écran d'accueil)
+  const isStandalone = typeof window !== 'undefined' && (
+    (window.navigator as any).standalone || 
+    window.matchMedia('(display-mode: standalone)').matches
+  );
+
+  if (!hasEnteredApp && !isStandalone) {
     return <LandingPage onEnterApp={() => setHasEnteredApp(true)} />;
   }
 
