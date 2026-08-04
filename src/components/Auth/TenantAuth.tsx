@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { usePOSStore } from '../../store';
-import { Coffee, Mail, Building, Key, PlusCircle, LogIn, ArrowRight } from 'lucide-react';
+import { Coffee, Mail, Building, Key, PlusCircle, LogIn, ArrowRight, ArrowLeft } from 'lucide-react';
 
 export const TenantAuth: React.FC = () => {
-  const { registerTenant, loginTenant, showNotification } = usePOSStore();
+  const { registerTenant, loginTenant, showNotification, setHasEnteredApp } = usePOSStore();
   const [mode, setMode] = useState<'LOGIN' | 'REGISTER'>('LOGIN');
 
   // Input states
@@ -58,7 +58,17 @@ export const TenantAuth: React.FC = () => {
       <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
 
       <div className="w-full max-w-md bg-dark-800/90 backdrop-blur-xl border border-dark-700/80 rounded-3xl p-6 sm:p-8 shadow-2xl relative z-10 my-auto">
-        <div className="flex flex-col items-center mb-8">
+        {/* Bouton de Retour à l'accueil */}
+        <button 
+          onClick={() => setHasEnteredApp(false)}
+          className="absolute top-6 left-6 text-gray-400 hover:text-white flex items-center gap-1.5 text-xs font-semibold bg-dark-700/50 hover:bg-dark-700 px-3 py-1.5 rounded-xl border border-dark-700 transition-all cursor-pointer"
+          title="Retourner à l'accueil"
+        >
+          <ArrowLeft size={14} />
+          Retour
+        </button>
+
+        <div className="flex flex-col items-center mb-8 mt-4">
           <div className="w-14 h-14 bg-gradient-to-tr from-primary to-purple-600 rounded-2xl flex items-center justify-center text-white mb-4 shadow-lg shadow-primary/20">
             <Coffee size={32} />
           </div>
