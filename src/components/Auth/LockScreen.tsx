@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { usePOSStore } from '../../store';
-import { Lock, Users } from 'lucide-react';
+import { Lock, Users, ArrowLeft, UserPlus } from 'lucide-react';
 import type { User } from '../../types';
 
 export const LockScreen: React.FC = () => {
-  const { getUsersByTenant, setCurrentUser } = usePOSStore();
+  const { currentTenant, getUsersByTenant, setCurrentUser, logoutTenant, users: allUsers, showNotification } = usePOSStore();
   const users = getUsersByTenant();
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [pin, setPin] = useState('');
@@ -36,38 +36,83 @@ export const LockScreen: React.FC = () => {
         
         {/* Left: User Selection */}
         <div className="flex-1 p-6 md:p-8 border-b md:border-b-0 md:border-r border-dark-700 flex flex-col overflow-y-auto">
-          <div className="flex items-center gap-3 mb-6 shrink-0">
-            <Lock className="text-primary" size={28} />
-            <h2 className="text-2xl font-bold">Qui se connecte ?</h2>
+          <div className="flex items-center justify-between mb-6 shrink-0 gap-3">
+            <div className="flex items-center gap-2">
+              <Lock className="text-primary" size={24} />
+              <h2 className="text-xl font-bold">Qui se connecte ?</h2>
+            </div>
+            
+            {/* Bouton pour revenir à la saisie d'e-mail */}
+            <button
+              onClick={() => logoutTenant()}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-dark-700 hover:bg-dark-600 border border-dark-600 rounded-xl text-xs font-bold text-gray-300 transition-all cursor-pointer active:scale-95"
+            >
+              <ArrowLeft size={12} />
+              Changer d'email
+            </button>
           </div>
           
           <div className="flex-1 overflow-y-auto flex flex-col gap-3 pr-2">
-            {users.map(user => (
-              <button
-                key={user.id}
-                onClick={() => {
-                  setSelectedUser(user);
-                  setPin('');
-                  setError(false);
-                }}
-                className={`p-4 rounded-2xl flex items-center justify-between border-2 transition-all active:scale-[0.98] ${
-                  selectedUser?.id === user.id 
-                    ? 'border-primary bg-primary/10 text-white' 
-                    : 'border-dark-700 bg-dark-900 text-gray-400 hover:border-gray-500'
-                }`}
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-dark-700 flex items-center justify-center font-bold text-white text-lg">
-                    {user.name.substring(0, 2).toUpperCase()}
+            {users.length === 0 ? (
+              <div className="flex flex-col items-center justify-center text-center p-6 bg-dark-900 rounded-2xl border border-dashed border-dark-700 flex-1 my-auto">
+                <Users className="text-gray-500 mb-4" size={32} />
+                <p className="text-xs text-gray-400 font-medium mb-4 leading-relaxed">
+                  Aucun employé n'a été créé pour cet établissement.
+                </p>
+                <button
+                  onClick={() => {
+                    const defaultPin = currentTenant?.adminPin || '1111';
+                    const newAdmin: User = {
+                      id: 'usr_' + crypto.randomUUID(),
+                      name: (currentTenant?.establishmentName || 'Gecko') + ' Admin',
+                      pinCode: defaultPin,
+                      role: 'ADMIN',
+                      tenantId: currentTenant?.id
+                    };
+                    
+                    // Ajouter le nouvel admin directement dans le store
+                    usePOSStore.setState({
+                      users: [...allUsers, newAdmin]
+                    });
+
+                    // Forcer la sauvegarde
+                    localStorage.setItem('gecko_caisse_saas_data', JSON.stringify(usePOSStore.getState()));
+                    showNotification('alert', `Profil administrateur créé ! Connectez-vous avec le code PIN : ${defaultPin}`);
+                  }}
+                  className="flex items-center justify-center gap-2 w-full py-3 bg-primary hover:bg-primary/95 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-lg shadow-primary/20"
+                >
+                  <UserPlus size={14} />
+                  Créer profil Gérant par défaut
+                </button>
+              </div>
+            ) : (
+              users.map(user => (
+                <button
+                  key={user.id}
+                  onClick={() => {
+                    setSelectedUser(user);
+                    setPin('');
+                    setError(false);
+                  }}
+                  className={`p-4 rounded-2xl flex items-center justify-between border-2 transition-all active:scale-[0.98] ${
+                    selectedUser?.id === user.id 
+                      ? 'border-primary bg-primary/10 text-white' 
+                      : 'border-dark-700 bg-dark-900 text-gray-400 hover:border-gray-500'
+                  }`}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-dark-700 flex items-center justify-center font-bold text-white text-lg">
+                      {user.name.substring(0, 2).toUpperCase()}
+                    </div>
+                    <div className="text-left">
+                      <p className="font-bold text-lg text-white">{user.name}</p>
+                      <p className="text-sm text-gray-400 font-medium">{user.role}</p>
+                    </div>
                   </div>
-                  <div className="text-left">
-                    <p className="font-bold text-lg text-white">{user.name}</p>
-                    <p className="text-sm text-gray-400 font-medium">{user.role}</p>
-                  </div>
-                </div>
-                {selectedUser?.id === user.id && <span className="text-primary text-xl">●</span>}
-              </button>
-            ))}
+                  {selectedUser?.id === user.id && <span className="text-primary text-xl">●</span>}
+                </button>
+              ))
+            )}
           </div>
         </div>
 
