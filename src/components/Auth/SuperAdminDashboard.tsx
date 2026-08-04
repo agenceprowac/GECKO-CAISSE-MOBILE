@@ -44,14 +44,14 @@ export const SuperAdminDashboard: React.FC = () => {
     return matchesPlan && matchesStatus && matchesSearch;
   });
 
-  const handlePlanChange = (tenantId: string, newPlan: SubscriptionPlan, currentStatus: 'ACTIVE' | 'SUSPENDED') => {
-    updateTenantSubscription(tenantId, newPlan, currentStatus);
+  const handlePlanChange = async (tenantId: string, newPlan: SubscriptionPlan, currentStatus: 'ACTIVE' | 'SUSPENDED') => {
+    await updateTenantSubscription(tenantId, newPlan, currentStatus);
     showNotification('alert', 'Plan d\'abonnement mis à jour avec succès.');
   };
 
-  const handleToggleStatus = (tenantId: string, currentPlan: SubscriptionPlan, currentStatus: 'ACTIVE' | 'SUSPENDED') => {
+  const handleToggleStatus = async (tenantId: string, currentPlan: SubscriptionPlan, currentStatus: 'ACTIVE' | 'SUSPENDED') => {
     const newStatus = currentStatus === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
-    updateTenantSubscription(tenantId, currentPlan, newStatus);
+    await updateTenantSubscription(tenantId, currentPlan, newStatus);
     showNotification('alert', `Statut de l'établissement mis à jour : ${newStatus === 'ACTIVE' ? 'Activé' : 'Suspendu'}.`);
   };
 
@@ -59,8 +59,8 @@ export const SuperAdminDashboard: React.FC = () => {
     showNotification(
       'confirm',
       `ATTENTION : Voulez-vous vraiment supprimer définitivement l'établissement "${tenant.establishmentName}" ? Cette action effacera absolument toutes ses données (produits, tables, employés, ventes).`,
-      () => {
-        deleteTenant(tenant.id);
+      async () => {
+        await deleteTenant(tenant.id);
         showNotification('alert', `L'établissement "${tenant.establishmentName}" a été définitivement supprimé.`);
       }
     );

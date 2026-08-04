@@ -12,7 +12,9 @@ export const TenantAuth: React.FC = () => {
   const [adminPin, setAdminPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanEmail = email.toLowerCase().trim();
 
@@ -21,34 +23,45 @@ export const TenantAuth: React.FC = () => {
       return;
     }
 
-    if (mode === 'REGISTER') {
-      if (!establishmentName.trim()) {
-        showNotification('alert', "Veuillez entrer le nom de l'établissement.");
-        return;
-      }
-      if (adminPin.length !== 4) {
-        showNotification('alert', 'Le code PIN doit être de 4 chiffres.');
-        return;
-      }
-      if (adminPin !== confirmPin) {
-        showNotification('alert', 'Les codes PIN de confirmation ne correspondent pas.');
-        return;
-      }
+    setIsLoading(true);
 
-      const success = registerTenant(cleanEmail, establishmentName, adminPin);
-      if (success) {
-        showNotification('alert', `Espace "${establishmentName}" créé avec succès !`);
+    try {
+      if (mode === 'REGISTER') {
+        if (!establishmentName.trim()) {
+          showNotification('alert', "Veuillez entrer le nom de l'établissement.");
+          setIsLoading(false);
+          return;
+        }
+        if (adminPin.length !== 4) {
+          showNotification('alert', 'Le code PIN doit être de 4 chiffres.');
+          setIsLoading(false);
+          return;
+        }
+        if (adminPin !== confirmPin) {
+          showNotification('alert', 'Les codes PIN de confirmation ne correspondent pas.');
+          setIsLoading(false);
+          return;
+        }
+
+        const success = await registerTenant(cleanEmail, establishmentName, adminPin);
+        if (success) {
+          showNotification('alert', `Espace "${establishmentName}" créé avec succès !`);
+        } else {
+          showNotification('alert', 'Cet email est déjà utilisé pour un autre espace.');
+        }
       } else {
-        showNotification('alert', 'Cet email est déjà utilisé pour un autre espace.');
+        // Mode LOGIN
+        const tenant = await loginTenant(cleanEmail);
+        if (tenant) {
+          showNotification('alert', `Connexion à l'espace "${tenant.establishmentName}" réussie.`);
+        } else {
+          showNotification('alert', "Aucun établissement n'est associé à cette adresse email.");
+        }
       }
-    } else {
-      // Mode LOGIN
-      const tenant = loginTenant(cleanEmail);
-      if (tenant) {
-        showNotification('alert', `Connexion à l'espace "${tenant.establishmentName}" réussie.`);
-      } else {
-        showNotification('alert', "Aucun établissement n'est associé à cette adresse email.");
-      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -157,18 +170,24 @@ export const TenantAuth: React.FC = () => {
 
           <button
             type="submit"
-            className="w-full py-3.5 mt-2 bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/95 hover:to-indigo-500/95 text-white font-bold rounded-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-lg shadow-primary/20 text-sm"
+            disabled={isLoading}
+            className={`w-full py-3.5 mt-2 bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/95 hover:to-indigo-500/95 text-white font-bold rounded-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-lg shadow-primary/20 text-sm ${
+              isLoading ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
           >
-            {mode === 'LOGIN' ? (
+            {isLoading ? (
+              <span>Connexion en cours...</span>
+            ) : mode === 'LOGIN' ? (
               <>
                 <LogIn size={18} /> Se Connecter
+                <ArrowRight size={16} />
               </>
             ) : (
               <>
                 <PlusCircle size={18} /> Créer l'Établissement
+                <ArrowRight size={16} />
               </>
             )}
-            <ArrowRight size={16} />
           </button>
         </form>
 

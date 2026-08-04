@@ -5,11 +5,11 @@ interface POSState {
   // SaaS Tenants
   tenants: Tenant[];
   currentTenant: Tenant | null;
-  registerTenant: (email: string, establishmentName: string, adminPin: string) => boolean;
-  loginTenant: (email: string) => Tenant | null;
+  registerTenant: (email: string, establishmentName: string, adminPin: string) => Promise<boolean>;
+  loginTenant: (email: string) => Promise<Tenant | null>;
   logoutTenant: () => void;
-  deleteTenant: (tenantId: string) => void;
-  updateTenantSubscription: (tenantId: string, plan: SubscriptionPlan, status: 'ACTIVE' | 'SUSPENDED') => void;
+  deleteTenant: (tenantId: string) => Promise<void>;
+  updateTenantSubscription: (tenantId: string, plan: SubscriptionPlan, status: 'ACTIVE' | 'SUSPENDED') => Promise<void>;
   hasEnteredApp: boolean;
   setHasEnteredApp: (val: boolean) => void;
 
@@ -22,6 +22,7 @@ interface POSState {
   setOnlineStatus: (status: boolean) => void;
   isSyncing: boolean;
   syncSalesWithServer: () => Promise<void>;
+  syncCloudData: (tenantIdOverride?: string) => Promise<void>;
 
   // Products & Inventory History
   products: Product[];
@@ -179,32 +180,112 @@ export const usePOSStore = create<POSState>((set, get) => {
     setOnlineStatus: (status) => set({ isOnline: status }),
 
     syncSalesWithServer: async () => {
+      await get().syncCloudData();
+    },
+
+    syncCloudData: async (tenantIdOverride) => {
       const state = get();
-      if (!state.isOnline || state.isSyncing) return;
+      const tenantId = tenantIdOverride || state.currentTenant?.id;
+      if (!tenantId) return;
 
-      const tenantId = state.currentTenant?.id;
-      const unsyncedSales = state.sales.filter(s => s.tenantId === tenantId && !s.synced);
-
-      if (unsyncedSales.length === 0) return;
+      // Si le client est offline, on ne tente pas d'appeler l'API
+      if (!state.isOnline) return;
 
       set({ isSyncing: true });
 
-      // Simuler une requête de synchronisation réseau vers le backend/base de données Prisma (1.5 seconde)
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      try {
+        // Filtrer les données locales appartenant à ce tenant
+        const unsyncedSales = state.sales.filter(s => s.tenantId === tenantId && !s.synced);
+        const tenantProducts = state.products.filter(p => p.tenantId === tenantId);
+        const tenantTables = state.tables.filter(t => t.tenantId === tenantId);
+        const tenantUsers = state.users.filter(u => u.tenantId === tenantId);
+        const tenantStockHistory = state.stockHistory.filter(h => h.tenantId === tenantId);
 
-      const updatedSales = state.sales.map(sale => 
-        (sale.tenantId === tenantId && !sale.synced) 
-          ? { ...sale, synced: true } 
-          : sale
-      );
+        const response = await fetch('/api/sync', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            tenantId,
+            localSales: unsyncedSales,
+            localProducts: tenantProducts,
+            localTables: tenantTables,
+            localUsers: tenantUsers,
+            localStockHistory: tenantStockHistory
+          })
+        });
 
-      set({ sales: updatedSales, isSyncing: false });
-      persist({ sales: updatedSales });
+        if (!response.ok) {
+          throw new Error('Erreur de réponse de l\'API de synchronisation.');
+        }
 
-      state.showNotification(
-        'alert',
-        `${unsyncedSales.length} transaction(s) locale(s) synchronisée(s) avec succès sur le cloud !`
-      );
+        const data = await response.json();
+
+        // Mettre à jour l'état local avec les données issues du Cloud
+        // 1. Fusionner les ventes (en marquant celles qui viennent d'être synchronisées)
+        const syncedSaleIds = new Set(unsyncedSales.map(s => s.id));
+        const updatedLocalSales = state.sales.map(s => 
+          syncedSaleIds.has(s.id) ? { ...s, synced: true } : s
+        );
+
+        // Intégrer les ventes récupérées du serveur en évitant les doublons
+        const localSaleIds = new Set(updatedLocalSales.map(s => s.id));
+        const finalSales = [
+          ...updatedLocalSales,
+          ...data.sales.filter((s: any) => !localSaleIds.has(s.id))
+        ];
+
+        // 2. Remplacer/Fusionner les listes de produits, tables, utilisateurs, historique de stock
+        const otherTenantsProducts = state.products.filter(p => p.tenantId !== tenantId);
+        const finalProducts = [...otherTenantsProducts, ...data.products];
+
+        const otherTenantsTables = state.tables.filter(t => t.tenantId !== tenantId);
+        const finalTables = [...otherTenantsTables, ...data.tables];
+
+        const otherTenantsUsers = state.users.filter(u => u.tenantId !== tenantId);
+        const finalUsers = [...otherTenantsUsers, ...data.users];
+
+        const otherTenantsStockHistory = state.stockHistory.filter(h => h.tenantId !== tenantId);
+        const finalStockHistory = [...otherTenantsStockHistory, ...data.stockHistory];
+
+        set({
+          products: finalProducts,
+          tables: finalTables,
+          users: finalUsers,
+          stockHistory: finalStockHistory,
+          sales: finalSales,
+          isSyncing: false
+        });
+
+        // Mettre à jour le tenant actuel s'il a changé (ex: son plan ou statut modifié par le Super-Admin)
+        if (data.tenant && state.currentTenant && data.tenant.id === state.currentTenant.id) {
+          set({ currentTenant: data.tenant });
+        }
+
+        // Si on est le Super-Admin, on récupère tous les tenants en plus
+        if (data.allTenants && data.allTenants.length > 0) {
+          set({ tenants: data.allTenants });
+        }
+
+        // Sauvegarder dans le localStorage local pour le mode offline
+        persist({
+          products: finalProducts,
+          tables: finalTables,
+          users: finalUsers,
+          stockHistory: finalStockHistory,
+          sales: finalSales,
+          tenants: data.allTenants && data.allTenants.length > 0 ? data.allTenants : state.tenants
+        });
+
+        if (unsyncedSales.length > 0) {
+          state.showNotification('alert', `${unsyncedSales.length} ticket(s) de vente synchronisé(s) en ligne !`);
+        }
+
+      } catch (err) {
+        console.error('Échec de la synchronisation cloud :', err);
+        set({ isSyncing: false });
+      }
     },
 
     setHasEnteredApp: (val) => {
@@ -212,60 +293,80 @@ export const usePOSStore = create<POSState>((set, get) => {
       persist({ hasEnteredApp: val });
     },
 
-    // SaaS Tenants actions (Creates an empty establishment with only the admin user)
-    registerTenant: (email, establishmentName, adminPin) => {
+    registerTenant: async (email, establishmentName, adminPin) => {
       const emailLower = email.toLowerCase().trim();
-      const exists = get().tenants.some(t => t.email === emailLower);
-      if (exists) {
+      const state = get();
+
+      // Si le client est offline, on ne peut pas créer un compte global
+      if (!state.isOnline) {
+        state.showNotification('alert', 'Connexion internet requise pour créer un nouvel établissement.');
         return false;
       }
-      
-      const newTenant: Tenant = {
-        id: 'tnt_' + crypto.randomUUID(),
-        email: emailLower,
-        establishmentName,
-        adminPin,
-        plan: 'STANDARD',
-        status: 'ACTIVE'
-      };
 
-      const updatedTenants = [...get().tenants, newTenant];
-      
-      // Auto-create only the administrator user for this tenant
-      const adminUser: User = {
-        id: 'usr_' + crypto.randomUUID(),
-        name: establishmentName + ' Admin',
-        pinCode: adminPin,
-        role: 'ADMIN',
-        tenantId: newTenant.id
-      };
+      try {
+        const response = await fetch('/api/tenants', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'register',
+            email: emailLower,
+            establishmentName,
+            adminPin
+          })
+        });
 
-      // Completely empty products and tables arrays for new tenant
-      const updatedUsers = [...get().users, adminUser];
+        if (!response.ok) {
+          const errData = await response.json();
+          state.showNotification('alert', errData.error || 'Erreur lors de la création de l\'établissement.');
+          return false;
+        }
 
-      set({
-        tenants: updatedTenants,
-        currentTenant: newTenant,
-        users: updatedUsers,
-        currentUser: adminUser, // Auto-login to admin profile
-        hasEnteredApp: true,
-        cart: [],
-        currentTable: null,
-        total: 0
-      });
+        const newTenant = await response.json();
 
-      persist({
-        tenants: updatedTenants,
-        currentTenant: newTenant,
-        users: updatedUsers,
-        hasEnteredApp: true
-      });
+        // Créer l'employé admin par défaut en local pour cet appareil
+        const adminUser: User = {
+          id: 'usr_' + crypto.randomUUID(),
+          name: establishmentName + ' Admin',
+          pinCode: adminPin,
+          role: 'ADMIN',
+          tenantId: newTenant.id
+        };
 
-      return true;
+        const updatedTenants = [...state.tenants, newTenant];
+        const updatedUsers = [...state.users, adminUser];
+
+        set({
+          tenants: updatedTenants,
+          currentTenant: newTenant,
+          users: updatedUsers,
+          currentUser: adminUser,
+          hasEnteredApp: true,
+          cart: [],
+          currentTable: null,
+          total: 0
+        });
+
+        persist({
+          tenants: updatedTenants,
+          currentTenant: newTenant,
+          users: updatedUsers,
+          hasEnteredApp: true
+        });
+
+        // Lancer la première synchronisation cloud pour initialiser la base
+        await state.syncCloudData(newTenant.id);
+
+        return true;
+      } catch (error) {
+        console.error('Erreur inscription tenant:', error);
+        state.showNotification('alert', 'Une erreur réseau est survenue. Veuillez réessayer.');
+        return false;
+      }
     },
 
-    loginTenant: (email) => {
+    loginTenant: async (email) => {
       const emailLower = email.toLowerCase().trim();
+      const state = get();
 
       // Intercepter la connexion Super-Admin
       if (emailLower === 'vithianolionel@gmail.com') {
@@ -285,13 +386,12 @@ export const usePOSStore = create<POSState>((set, get) => {
           role: 'SUPER_ADMIN'
         };
 
-        // Si l'utilisateur n'est pas déjà dans le store, l'y ajouter
-        const usersExist = get().users.some(u => u.role === 'SUPER_ADMIN');
-        const updatedUsers = usersExist ? get().users : [...get().users, superAdminUser];
+        const usersExist = state.users.some(u => u.role === 'SUPER_ADMIN');
+        const updatedUsers = usersExist ? state.users : [...state.users, superAdminUser];
 
         set({ 
           currentTenant: superAdminTenant, 
-          currentUser: superAdminUser, // Se connecter directement en Super-Admin
+          currentUser: superAdminUser,
           users: updatedUsers,
           hasEnteredApp: true, 
           cart: [], 
@@ -305,12 +405,40 @@ export const usePOSStore = create<POSState>((set, get) => {
           hasEnteredApp: true 
         });
 
+        // Charger tous les tenants depuis le serveur
+        await get().syncCloudData(superAdminTenant.id);
+
         return superAdminTenant;
       }
 
-      let tenant = get().tenants.find(t => t.email === emailLower) || null;
-      
-      // Injection de secours pour test@test.com si le localStorage est vide ou corrompu
+      let tenant: Tenant | null = null;
+
+      // 1. Tenter la récupération en ligne (si on est connecté à internet)
+      if (state.isOnline) {
+        try {
+          const response = await fetch('/api/tenants', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'login',
+              email: emailLower
+            })
+          });
+
+          if (response.ok) {
+            tenant = await response.json();
+          }
+        } catch (err) {
+          console.warn('Échec appel API Login, fallback local...', err);
+        }
+      }
+
+      // 2. Fallback local si offline ou si l'API a échoué (sécurité hors-ligne)
+      if (!tenant) {
+        tenant = state.tenants.find(t => t.email === emailLower) || null;
+      }
+
+      // Injection de secours pour test@test.com
       if (!tenant && emailLower === 'test@test.com') {
         const demoTenantId = 'tnt_demo_gecko';
         const demoUserId = 'usr_demo_admin';
@@ -333,8 +461,8 @@ export const usePOSStore = create<POSState>((set, get) => {
         };
 
         set({
-          tenants: [...get().tenants, demoTenant],
-          users: [...get().users, demoUser]
+          tenants: [...state.tenants, demoTenant],
+          users: [...state.users, demoUser]
         });
 
         tenant = demoTenant;
@@ -343,7 +471,7 @@ export const usePOSStore = create<POSState>((set, get) => {
       if (tenant) {
         // Bloquer la connexion si l'établissement est suspendu
         if (tenant.status === 'SUSPENDED') {
-          get().showNotification('alert', 'Votre espace de caisse a été suspendu pour défaut de paiement. Veuillez contacter l\'administrateur SaaS.');
+          state.showNotification('alert', 'Votre espace de caisse a été suspendu pour défaut de paiement. Veuillez contacter l\'administrateur SaaS.');
           return null;
         }
 
@@ -354,6 +482,9 @@ export const usePOSStore = create<POSState>((set, get) => {
           currentTenant: tenant, 
           hasEnteredApp: true 
         });
+
+        // Lancer la synchronisation cloud en tâche de fond pour charger les produits à jour
+        await get().syncCloudData(tenant.id);
       }
       return tenant;
     },
@@ -363,9 +494,22 @@ export const usePOSStore = create<POSState>((set, get) => {
       persist({ currentTenant: null });
     },
 
-    deleteTenant: (tenantId) => {
+    deleteTenant: async (tenantId) => {
       const state = get();
       
+      // Supprimer sur le Cloud si en ligne
+      if (state.isOnline) {
+        try {
+          await fetch('/api/tenants', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'delete', tenantId })
+          });
+        } catch (err) {
+          console.error('Erreur API suppression tenant:', err);
+        }
+      }
+
       const updatedTenants = state.tenants.filter(t => t.id !== tenantId);
       const updatedUsers = state.users.filter(u => u.tenantId !== tenantId);
       const updatedProducts = state.products.filter(p => p.tenantId !== tenantId);
@@ -397,8 +541,23 @@ export const usePOSStore = create<POSState>((set, get) => {
       });
     },
 
-    updateTenantSubscription: (tenantId, plan, status) => {
-      const updatedTenants = get().tenants.map(t => 
+    updateTenantSubscription: async (tenantId, plan, status) => {
+      const state = get();
+
+      // Mettre à jour sur le Cloud si en ligne
+      if (state.isOnline) {
+        try {
+          await fetch('/api/tenants', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'update', tenantId, plan, status })
+          });
+        } catch (err) {
+          console.error('Erreur API modification plan tenant:', err);
+        }
+      }
+
+      const updatedTenants = state.tenants.map(t => 
         t.id === tenantId ? { ...t, plan, status } : t
       );
 
