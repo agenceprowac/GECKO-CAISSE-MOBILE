@@ -14,8 +14,9 @@ export const TenantAuth: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const cleanEmail = email.toLowerCase().trim();
 
-    if (!email.trim()) {
+    if (!cleanEmail) {
       showNotification('alert', 'Veuillez entrer une adresse email valide.');
       return;
     }
@@ -34,7 +35,7 @@ export const TenantAuth: React.FC = () => {
         return;
       }
 
-      const success = registerTenant(email, establishmentName, adminPin);
+      const success = registerTenant(cleanEmail, establishmentName, adminPin);
       if (success) {
         showNotification('alert', `Espace "${establishmentName}" créé avec succès !`);
       } else {
@@ -42,7 +43,7 @@ export const TenantAuth: React.FC = () => {
       }
     } else {
       // Mode LOGIN
-      const tenant = loginTenant(email);
+      const tenant = loginTenant(cleanEmail);
       if (tenant) {
         showNotification('alert', `Connexion à l'espace "${tenant.establishmentName}" réussie.`);
       } else {
@@ -90,6 +91,9 @@ export const TenantAuth: React.FC = () => {
               <input
                 type="email"
                 required
+                autoCapitalize="none"
+                autoCorrect="false"
+                spellCheck="false"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="nom@exemple.com"
