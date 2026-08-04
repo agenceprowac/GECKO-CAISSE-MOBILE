@@ -322,7 +322,8 @@ export const usePOSStore = create<POSState>((set, get) => {
 
         if (!response.ok) {
           const errData = await response.json();
-          state.showNotification('alert', errData.error || 'Erreur lors de la création de l\'établissement.');
+          const errorMessage = errData.configError || errData.error || 'Erreur lors de la création de l\'établissement.';
+          state.showNotification('alert', errorMessage);
           return false;
         }
 

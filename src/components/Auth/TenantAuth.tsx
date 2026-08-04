@@ -46,8 +46,6 @@ export const TenantAuth: React.FC = () => {
         const success = await registerTenant(cleanEmail, establishmentName, adminPin);
         if (success) {
           showNotification('alert', `Espace "${establishmentName}" créé avec succès !`);
-        } else {
-          showNotification('alert', 'Cet email est déjà utilisé pour un autre espace.');
         }
       } else {
         // Mode LOGIN
