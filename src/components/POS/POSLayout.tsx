@@ -5,11 +5,12 @@ import { PaymentModal } from '../Payment/PaymentModal';
 import { TableSelector } from '../Tables/TableSelector';
 import { Sidebar } from './Sidebar';
 import { StockManager } from '../Stock/StockManager';
+import { ArticleManager } from '../Stock/ArticleManager';
 import { ReportsPage } from '../Reports/ReportsPage';
 import { TablesPage } from '../Tables/TablesPage';
 import { UsersPage } from '../Users/UsersPage';
 import { ProfilePage } from '../Users/ProfilePage';
-import { Menu, Search, Users, X, Wifi, WifiOff, RefreshCw } from 'lucide-react';
+import { Menu, Search, Users, X, Wifi, WifiOff, RefreshCw, PackagePlus, Tag } from 'lucide-react';
 import { NotificationModal } from '../UI/NotificationModal';
 import { usePOSStore } from '../../store';
 
@@ -18,6 +19,7 @@ export const POSLayout: React.FC = () => {
   const [showTableSelector, setShowTableSelector] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
   const [showStockManager, setShowStockManager] = useState(false);
+  const [showArticleManager, setShowArticleManager] = useState(false);
   
   // Navigation views: 'pos' | 'reports' | 'users' | 'tables' | 'profile'
   const [currentView, setCurrentView] = useState<'pos' | 'reports' | 'users' | 'tables' | 'profile'>('pos');
@@ -25,7 +27,8 @@ export const POSLayout: React.FC = () => {
   // Mobile only toggle
   const [showCartMobile, setShowCartMobile] = useState(false);
 
-  const { currentTable, cart, setCurrentUser, isOnline, isSyncing, getSalesByTenant, syncSalesWithServer } = usePOSStore();
+  const { currentUser, currentTable, cart, setCurrentUser, isOnline, isSyncing, getSalesByTenant, syncSalesWithServer } = usePOSStore();
+  const canManageStock = currentUser?.role === 'ADMIN' || currentUser?.role === 'BARMAN';
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   const unsyncedCount = getSalesByTenant().filter(s => !s.synced).length;
@@ -75,6 +78,30 @@ export const POSLayout: React.FC = () => {
             <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">
               BarPOS
             </h1>
+            
+            {/* Raccourci d'accès direct aux Articles pour l'ADMIN */}
+            {currentUser?.role === 'ADMIN' && (
+              <button
+                onClick={() => setShowArticleManager(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/20 text-primary hover:bg-primary hover:text-white rounded-xl text-xs font-bold transition-all border border-primary/30 cursor-pointer shadow-lg shadow-primary/5 active:scale-95 ml-2"
+                title="Ouvrir le Catalogue d'Articles"
+              >
+                <Tag size={14} />
+                <span>Articles</span>
+              </button>
+            )}
+
+            {/* Raccourci d'accès direct au Gestionnaire de Stock pour l'ADMIN / BARMAN */}
+            {canManageStock && (
+              <button
+                onClick={() => setShowStockManager(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/20 text-primary hover:bg-primary hover:text-white rounded-xl text-xs font-bold transition-all border border-primary/30 cursor-pointer shadow-lg shadow-primary/5 active:scale-95 ml-2"
+                title="Ouvrir la Gestion des Stocks"
+              >
+                <PackagePlus size={14} />
+                <span>Stocks</span>
+              </button>
+            )}
             
             {/* Status Réseau / Synchro */}
             <div className="flex items-center gap-2">
@@ -180,9 +207,11 @@ export const POSLayout: React.FC = () => {
         currentView={currentView}
         onViewChange={setCurrentView}
         onStockClick={() => setShowStockManager(true)}
+        onArticleClick={() => setShowArticleManager(true)}
         onLogout={() => setCurrentUser(null)}
       />
       {showStockManager && <StockManager onClose={() => setShowStockManager(false)} />}
+      {showArticleManager && <ArticleManager onClose={() => setShowArticleManager(false)} />}
       {showPayment && <PaymentModal onClose={() => setShowPayment(false)} />}
       {showTableSelector && <TableSelector onClose={() => setShowTableSelector(false)} />}
       <NotificationModal />

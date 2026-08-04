@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, LayoutDashboard, FileText, LogOut, Coffee, PackagePlus, Users, LayoutGrid, User } from 'lucide-react';
+import { X, LayoutDashboard, FileText, LogOut, Coffee, PackagePlus, Users, LayoutGrid, User, Tag } from 'lucide-react';
 import { usePOSStore } from '../../store';
 
 interface SidebarProps {
@@ -8,6 +8,7 @@ interface SidebarProps {
   currentView: 'pos' | 'reports' | 'users' | 'tables' | 'profile';
   onViewChange: (view: 'pos' | 'reports' | 'users' | 'tables' | 'profile') => void;
   onStockClick: () => void;
+  onArticleClick: () => void;
   onLogout: () => void;
 }
 
@@ -17,6 +18,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   currentView, 
   onViewChange, 
   onStockClick,
+  onArticleClick,
   onLogout
 }) => {
   const currentUser = usePOSStore(state => state.currentUser);
@@ -93,20 +95,35 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </button>
           ))}
           
-          {canManageStock && (
+          {(currentUser?.role === 'ADMIN' || canManageStock) && (
             <>
               <div className="border-t border-dark-800 my-2" />
               
-              <button 
-                onClick={() => {
-                  onClose();
-                  onStockClick();
-                }}
-                className="flex items-center gap-4 px-4 py-3 rounded-xl text-gray-400 hover:bg-dark-800 hover:text-white font-medium transition-colors"
-              >
-                <PackagePlus size={20} />
-                Gestion des Articles / Stocks
-              </button>
+              {currentUser?.role === 'ADMIN' && (
+                <button 
+                  onClick={() => {
+                    onClose();
+                    onArticleClick();
+                  }}
+                  className="flex items-center gap-4 px-4 py-3 rounded-xl text-gray-400 hover:bg-dark-800 hover:text-white font-medium transition-colors cursor-pointer"
+                >
+                  <Tag size={20} />
+                  Configuration Articles
+                </button>
+              )}
+
+              {canManageStock && (
+                <button 
+                  onClick={() => {
+                    onClose();
+                    onStockClick();
+                  }}
+                  className="flex items-center gap-4 px-4 py-3 rounded-xl text-gray-400 hover:bg-dark-800 hover:text-white font-medium transition-colors cursor-pointer"
+                >
+                  <PackagePlus size={20} />
+                  Gestion des Stocks
+                </button>
+              )}
             </>
           )}
         </nav>

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { OrderItem, Product, Table, User, Sale, Tenant } from './types';
+import type { OrderItem, Product, Table, User, Sale, Tenant, StockHistoryEntry } from './types';
 
 interface POSState {
   // SaaS Tenants
@@ -22,9 +22,11 @@ interface POSState {
   isSyncing: boolean;
   syncSalesWithServer: () => Promise<void>;
 
-  // Products
+  // Products & Inventory History
   products: Product[];
   getProductsByTenant: () => Product[];
+  stockHistory: StockHistoryEntry[];
+  getStockHistoryByTenant: () => StockHistoryEntry[];
   updateStock: (productId: string, quantityToAdd: number) => void;
   addProduct: (product: Omit<Product, 'id'>) => void;
   updateProduct: (product: Product) => void;
@@ -87,6 +89,7 @@ const loadPersistedData = () => {
     tables: [],
     users: [],
     sales: [],
+    stockHistory: [],
     hasEnteredApp: false
   };
 };
@@ -104,6 +107,7 @@ export const usePOSStore = create<POSState>((set, get) => {
       tables: updates.tables !== undefined ? updates.tables : state.tables,
       users: updates.users !== undefined ? updates.users : state.users,
       sales: updates.sales !== undefined ? updates.sales : state.sales,
+      stockHistory: updates.stockHistory !== undefined ? updates.stockHistory : state.stockHistory,
       hasEnteredApp: updates.hasEnteredApp !== undefined ? updates.hasEnteredApp : state.hasEnteredApp,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
@@ -116,7 +120,13 @@ export const usePOSStore = create<POSState>((set, get) => {
     tables: persistedData.tables,
     users: persistedData.users,
     sales: persistedData.sales,
+    stockHistory: persistedData.stockHistory || [],
     hasEnteredApp: persistedData.hasEnteredApp || false,
+
+    getStockHistoryByTenant: () => {
+      const tenantId = get().currentTenant?.id;
+      return get().stockHistory.filter(h => h.tenantId === tenantId);
+    },
     
     currentUser: null,
     cart: [],
@@ -291,11 +301,45 @@ export const usePOSStore = create<POSState>((set, get) => {
 
     // Products actions
     updateStock: (productId, quantityToAdd) => {
+      const product = get().products.find(p => p.id === productId);
+      if (!product) return;
+
       const updatedProducts = get().products.map(p => 
         p.id === productId ? { ...p, stock: Math.max(0, p.stock + quantityToAdd) } : p
       );
-      set({ products: updatedProducts });
-      persist({ products: updatedProducts });
+
+      const now = new Date();
+      const formatter = new Intl.DateTimeFormat('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+      const formattedDate = `Le ${formatter.format(now).replace(',', ' à')}`;
+
+      const newHistoryEntry: StockHistoryEntry = {
+        id: 'stk_' + crypto.randomUUID(),
+        productId,
+        productName: product.name,
+        quantityAdded: quantityToAdd,
+        userLabel: get().currentUser?.name || 'Administrateur',
+        createdAt: formattedDate,
+        tenantId: product.tenantId
+      };
+
+      const updatedHistory = [newHistoryEntry, ...get().stockHistory];
+
+      set({ 
+        products: updatedProducts,
+        stockHistory: updatedHistory
+      });
+
+      persist({ 
+        products: updatedProducts,
+        stockHistory: updatedHistory
+      });
     },
 
     addProduct: (product) => {

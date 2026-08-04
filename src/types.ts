@@ -54,6 +54,12 @@ export type Sale = {
   synced: boolean;
   rawDate: string; // ISO String (ex: "2026-08-04T02:05:00.000Z")
 };
-
-
-
+export type StockHistoryEntry = {
+  id: string;
+  productId: string;
+  productName: string;
+  quantityAdded: number;
+  userLabel: string;
+  createdAt: string; // "DD/MM/YYYY à HH:mm"
+  tenantId?: string;
+};
