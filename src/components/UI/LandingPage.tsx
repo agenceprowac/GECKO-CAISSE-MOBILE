@@ -84,7 +84,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
               onClick={onEnterApp}
               className="px-5 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-500 hover:shadow-lg hover:shadow-blue-500/25 active:scale-95 transition-all"
             >
-              Lancer la Démo Web
+              Se Connecter
             </button>
           </nav>
 
@@ -135,7 +135,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
               }}
               className="w-full py-3 rounded-xl bg-blue-600 text-white font-semibold text-center hover:bg-blue-500 active:scale-95 transition-all"
             >
-              Lancer la Démo Web
+              Se Connecter
             </button>
           </div>
         )}
@@ -177,7 +177,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
                   onClick={onEnterApp}
                   className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gray-900 border border-gray-800 text-white font-bold hover:bg-gray-800 hover:border-gray-700 hover:scale-[1.02] active:scale-98 transition-all flex items-center justify-center gap-2"
                 >
-                  Tester la démo web
+                  Se Connecter
                   <ArrowRight size={20} className="text-blue-400" />
                 </button>
               </div>
@@ -486,7 +486,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
             },
             {
               q: "Puis-je tester l'application gratuitement ?",
-              a: "Oui ! Vous pouvez cliquer sur le bouton 'Lancer la Démo Web' en haut de cette page pour tester le système complet directement dans votre navigateur web, sans aucune inscription."
+              a: "Oui ! Vous pouvez cliquer sur le bouton 'Se Connecter' en haut de cette page pour tester le système complet directement dans votre navigateur web, sans aucune inscription."
             }
           ].map((item, idx) => (
             <div 
