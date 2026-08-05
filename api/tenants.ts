@@ -26,7 +26,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     // 1. Connexion / Vérification d'un espace existant
     if (action === 'login') {
-      if (!email) return res.status(400).json({ error: 'Email requis.' });
+      if (!email || !adminPin) return res.status(400).json({ error: 'Email et code PIN requis.' });
       const emailLower = email.toLowerCase().trim();
 
       const tenant = await prisma.tenant.findUnique({
@@ -35,6 +35,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (!tenant) {
         return res.status(404).json({ error: "Aucun établissement n'est associé à cette adresse email." });
+      }
+
+      if (tenant.adminPin !== adminPin) {
+        return res.status(401).json({ error: "Le code PIN est incorrect." });
       }
 
       return res.status(200).json(tenant);
@@ -80,8 +84,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(201).json(tenant);
     }
 
+    // Sécurisation Super-Admin pour Update / Delete
+    const isSuperAdmin = req.headers['x-super-admin-pin'] === '9999';
+
     // 3. Mise à jour de l'abonnement par le Super-Admin
     if (action === 'update') {
+      if (!isSuperAdmin) return res.status(401).json({ error: 'Non autorisé.' });
       if (!tenantId || !plan || !status) {
         return res.status(400).json({ error: 'Données manquantes pour la mise à jour.' });
       }
@@ -99,6 +107,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // 4. Suppression définitive (Super-Admin)
     if (action === 'delete') {
+      if (!isSuperAdmin) return res.status(401).json({ error: 'Non autorisé.' });
       if (!tenantId) return res.status(400).json({ error: 'ID de l\'établissement manquant.' });
 
       // Suppression en cascade (Prisma)

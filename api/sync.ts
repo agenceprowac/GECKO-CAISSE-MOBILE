@@ -27,6 +27,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    // === Sécurisation de l'API ===
+    const tenantPin = req.headers['x-tenant-pin'];
+    const superAdminPin = req.headers['x-super-admin-pin'];
+
+    if (tenantId === 'tnt_super_admin') {
+      if (superAdminPin !== '9999') {
+        return res.status(401).json({ error: 'Accès Super-Admin non autorisé.' });
+      }
+    } else {
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId }
+      });
+      if (!tenant) {
+        return res.status(404).json({ error: "Établissement introuvable." });
+      }
+      if (tenant.adminPin !== tenantPin) {
+        return res.status(401).json({ error: "Code PIN d'établissement incorrect ou manquant." });
+      }
+    }
+
     // 1. Enregistrer ou mettre à jour les produits locaux s'il y a lieu
     if (localProducts && Array.isArray(localProducts)) {
       for (const prod of localProducts) {

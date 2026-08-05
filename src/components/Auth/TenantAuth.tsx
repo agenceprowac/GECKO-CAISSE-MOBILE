@@ -49,11 +49,17 @@ export const TenantAuth: React.FC = () => {
         }
       } else {
         // Mode LOGIN
-        const tenant = await loginTenant(cleanEmail);
+        if (adminPin.length !== 4) {
+          showNotification('alert', 'Le code PIN doit être de 4 chiffres.');
+          setIsLoading(false);
+          return;
+        }
+        
+        const tenant = await loginTenant(cleanEmail, adminPin);
         if (tenant) {
           showNotification('alert', `Connexion à l'espace "${tenant.establishmentName}" réussie.`);
         } else {
-          showNotification('alert', "Aucun établissement n'est associé à cette adresse email.");
+          showNotification('alert', "La connexion a échoué. Vérifiez vos identifiants.");
         }
       }
     } catch (err) {
@@ -114,57 +120,57 @@ export const TenantAuth: React.FC = () => {
           </div>
 
           {mode === 'REGISTER' && (
-            <>
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Nom de l'Établissement</label>
+              <div className="relative">
+                <Building className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+                <input
+                  type="text"
+                  required
+                  value={establishmentName}
+                  onChange={(e) => setEstablishmentName(e.target.value)}
+                  placeholder="Ex: Le Comptoir Lounge"
+                  className="w-full pl-10 pr-4 py-3 bg-dark-900/60 border border-dark-700 rounded-xl focus:outline-none focus:border-primary text-white text-sm font-medium transition-colors"
+                />
+              </div>
+            </div>
+          )}
+
+          <div className={mode === 'REGISTER' ? "grid grid-cols-2 gap-4" : ""}>
+            <div>
+              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Code PIN Admin</label>
+              <div className="relative">
+                <Key className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+                <input
+                  type="password"
+                  maxLength={4}
+                  required
+                  value={adminPin}
+                  onChange={(e) => setAdminPin(e.target.value.replace(/\D/g, ''))}
+                  placeholder="PIN (4)"
+                  className="w-full pl-10 pr-4 py-3 bg-dark-900/60 border border-dark-700 rounded-xl focus:outline-none focus:border-primary text-white text-center tracking-widest text-lg font-bold transition-colors"
+                />
+              </div>
+            </div>
+
+            {mode === 'REGISTER' && (
               <div>
-                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Nom de l'Établissement</label>
+                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Confirmation</label>
                 <div className="relative">
-                  <Building className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+                  <Key className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
                   <input
-                    type="text"
+                    type="password"
+                    maxLength={4}
                     required
-                    value={establishmentName}
-                    onChange={(e) => setEstablishmentName(e.target.value)}
-                    placeholder="Ex: Le Comptoir Lounge"
-                    className="w-full pl-10 pr-4 py-3 bg-dark-900/60 border border-dark-700 rounded-xl focus:outline-none focus:border-primary text-white text-sm font-medium transition-colors"
+                    value={confirmPin}
+                    onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ''))}
+                    placeholder="PIN (4)"
+                    className="w-full pl-10 pr-4 py-3 bg-dark-900/60 border border-dark-700 rounded-xl focus:outline-none focus:border-primary text-white text-center tracking-widest text-lg font-bold transition-colors"
                   />
                 </div>
               </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Code PIN Admin</label>
-                  <div className="relative">
-                    <Key className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-                    <input
-                      type="password"
-                      maxLength={4}
-                      required
-                      value={adminPin}
-                      onChange={(e) => setAdminPin(e.target.value.replace(/\D/g, ''))}
-                      placeholder="PIN (4)"
-                      className="w-full pl-10 pr-4 py-3 bg-dark-900/60 border border-dark-700 rounded-xl focus:outline-none focus:border-primary text-white text-center tracking-widest text-lg font-bold transition-colors"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Confirmation</label>
-                  <div className="relative">
-                    <Key className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-                    <input
-                      type="password"
-                      maxLength={4}
-                      required
-                      value={confirmPin}
-                      onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ''))}
-                      placeholder="PIN (4)"
-                      className="w-full pl-10 pr-4 py-3 bg-dark-900/60 border border-dark-700 rounded-xl focus:outline-none focus:border-primary text-white text-center tracking-widest text-lg font-bold transition-colors"
-                    />
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
+            )}
+          </div>
 
           <button
             type="submit"

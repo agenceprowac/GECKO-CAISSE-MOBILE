@@ -6,7 +6,7 @@ interface POSState {
   tenants: Tenant[];
   currentTenant: Tenant | null;
   registerTenant: (email: string, establishmentName: string, adminPin: string) => Promise<boolean>;
-  loginTenant: (email: string) => Promise<Tenant | null>;
+  loginTenant: (email: string, adminPin: string) => Promise<Tenant | null>;
   logoutTenant: () => void;
   deleteTenant: (tenantId: string) => Promise<void>;
   updateTenantSubscription: (tenantId: string, plan: SubscriptionPlan, status: 'ACTIVE' | 'SUSPENDED') => Promise<void>;
@@ -206,11 +206,19 @@ export const usePOSStore = create<POSState>((set, get) => {
         const tenantUsers = state.users.filter(u => u.tenantId === tenantId);
         const tenantStockHistory = state.stockHistory.filter(h => h.tenantId === tenantId);
 
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json'
+        };
+
+        if (tenantId === 'tnt_super_admin') {
+          headers['X-Super-Admin-Pin'] = '9999';
+        } else if (state.currentTenant?.adminPin) {
+          headers['X-Tenant-Pin'] = state.currentTenant.adminPin;
+        }
+
         const response = await fetch('/api/sync', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers,
           body: JSON.stringify({
             tenantId,
             localSales: unsyncedSales,
@@ -287,9 +295,13 @@ export const usePOSStore = create<POSState>((set, get) => {
           state.showNotification('alert', `${unsyncedSales.length} ticket(s) de vente synchronisé(s) en ligne !`);
         }
 
-      } catch (err) {
+      } catch (err: any) {
         console.error('Échec de la synchronisation cloud :', err);
         set({ isSyncing: false });
+        // En cas d'erreur de réseau (ex: serveur injoignable, coupure WiFi)
+        if (err.message === 'Failed to fetch' || err.name === 'TypeError' || !navigator.onLine) {
+          set({ isOnline: false });
+        }
       }
     },
 
@@ -370,12 +382,12 @@ export const usePOSStore = create<POSState>((set, get) => {
       }
     },
 
-    loginTenant: async (email) => {
+    loginTenant: async (email, adminPin) => {
       const emailLower = email.toLowerCase().trim();
       const state = get();
 
       // Intercepter la connexion Super-Admin
-      if (emailLower === 'admin@gecko.com') {
+      if (emailLower === 'admin@gecko.com' && adminPin === '9999') {
         const superAdminTenant: Tenant = {
           id: 'tnt_super_admin',
           email: 'admin@gecko.com',
@@ -409,12 +421,18 @@ export const usePOSStore = create<POSState>((set, get) => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               action: 'login',
-              email: emailLower
+              email: emailLower,
+              adminPin
             })
           });
 
           if (response.ok) {
             tenant = await response.json();
+          } else {
+             // Si la requête a échoué (ex: 401 Unauthorized pour mauvais PIN), on arrête ici pour ne pas bypasser hors-ligne
+             const errorData = await response.json();
+             state.showNotification('error', errorData.error || 'Erreur de connexion.');
+             return null;
           }
         } catch (err) {
           console.warn('Échec appel API Login, fallback local...', err);

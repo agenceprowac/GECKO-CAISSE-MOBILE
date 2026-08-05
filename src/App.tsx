@@ -47,7 +47,7 @@ function App() {
       window.removeEventListener('offline', handleOffline);
       window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
     };
-  }, []);
+  }, [setOnlineStatus, syncSalesWithServer, setDeferredPrompt]);
 
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
                       (window.navigator as any).standalone === true;
