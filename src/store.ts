@@ -734,7 +734,6 @@ export const usePOSStore = create<POSState>((set, get) => {
       });
       const formattedDate = `Le ${formatter.format(now).replace(',', ' à')}`;
       const tenantId = get().currentTenant?.id;
-      const isOnline = get().isOnline;
       
       const updatedSales = [
         {
