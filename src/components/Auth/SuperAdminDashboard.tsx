@@ -49,13 +49,6 @@ export const SuperAdminDashboard: React.FC = () => {
     showNotification('alert', 'Plan d\'abonnement mis à jour avec succès.');
   };
 
-  const addDaysToSubscription = async (tenant: Tenant, days: number) => {
-    const currentEnd = tenant.subscriptionEndDate ? new Date(tenant.subscriptionEndDate) : new Date();
-    currentEnd.setDate(currentEnd.getDate() + days);
-    await updateTenantSubscription(tenant.id, tenant.plan, tenant.status, currentEnd.toISOString());
-    showNotification('alert', `Validité prolongée de ${days} jours pour ${tenant.establishmentName}.`);
-  };
-
   const handleToggleStatus = async (tenantId: string, currentPlan: SubscriptionPlan, currentStatus: 'ACTIVE' | 'SUSPENDED') => {
     const newStatus = currentStatus === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
     await updateTenantSubscription(tenantId, currentPlan, newStatus);
