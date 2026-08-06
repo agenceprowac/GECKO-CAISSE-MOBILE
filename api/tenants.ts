@@ -60,6 +60,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(409).json({ error: 'Cet email est déjà associé à un autre établissement.' });
       }
 
+      const trialEndDate = new Date();
+      trialEndDate.setDate(trialEndDate.getDate() + 14);
+
       // Créer l'établissement
       const tenant = await prisma.tenant.create({
         data: {
@@ -67,7 +70,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           establishmentName,
           adminPin,
           plan: 'STANDARD',
-          status: 'ACTIVE'
+          status: 'ACTIVE',
+          subscriptionEndDate: trialEndDate
         }
       });
 
@@ -94,11 +98,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ error: 'Données manquantes pour la mise à jour.' });
       }
 
+      const { subscriptionEndDate } = req.body;
+
       const updatedTenant = await prisma.tenant.update({
         where: { id: tenantId },
         data: {
           plan,
-          status
+          status,
+          ...(subscriptionEndDate !== undefined && { subscriptionEndDate: subscriptionEndDate ? new Date(subscriptionEndDate) : null })
         }
       });
 

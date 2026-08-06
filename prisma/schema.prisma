@@ -17,6 +17,7 @@ model Tenant {
   adminPin          String
   plan              String            @default("STANDARD")
   status            String            @default("ACTIVE")
+  subscriptionEndDate DateTime?
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
   

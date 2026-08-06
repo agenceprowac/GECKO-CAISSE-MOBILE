@@ -160,8 +160,27 @@ export const ProfilePage: React.FC = () => {
                 <strong>Email Propriétaire :</strong> <span className="text-white">{currentTenant.email}</span>
               </p>
               <p>
-                <strong>Statut de l'abonnement :</strong> <span className="text-emerald-400 font-bold bg-emerald-400/10 px-2 py-0.5 rounded border border-emerald-400/20">Actif (SaaS)</span>
+                <strong>Statut du compte :</strong> <span className={`font-bold px-2 py-0.5 rounded border ${currentTenant.status === 'ACTIVE' ? 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20' : 'text-red-400 bg-red-400/10 border-red-400/20'}`}>{currentTenant.status === 'ACTIVE' ? 'Actif' : 'Suspendu'}</span>
               </p>
+              <p>
+                <strong>Plan d'abonnement :</strong> <span className="text-primary font-bold">{currentTenant.plan}</span>
+              </p>
+              <p>
+                <strong>Valable jusqu'au :</strong> <span className="text-white">
+                  {currentTenant.subscriptionEndDate ? new Date(currentTenant.subscriptionEndDate).toLocaleDateString('fr-FR') : 'Non définie'}
+                </span>
+              </p>
+            </div>
+
+            <div className="flex justify-start border-b border-red-500/10 pb-6 mb-2">
+              <button
+                onClick={() => {
+                  showNotification('alert', 'Votre demande de réabonnement/mise à niveau a été transmise à notre équipe.');
+                }}
+                className="px-6 py-3 bg-gradient-to-r from-primary to-purple-600 text-white rounded-xl font-bold hover:opacity-90 transition-opacity shadow-lg"
+              >
+                Renouveler mon abonnement / Mettre à niveau
+              </button>
             </div>
 
             <div className="p-4 bg-red-950/40 rounded-2xl border border-red-950 text-xs text-red-300 leading-relaxed">

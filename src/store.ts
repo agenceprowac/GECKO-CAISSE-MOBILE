@@ -9,7 +9,7 @@ interface POSState {
   loginTenant: (email: string, adminPin: string) => Promise<Tenant | null>;
   logoutTenant: () => void;
   deleteTenant: (tenantId: string) => Promise<void>;
-  updateTenantSubscription: (tenantId: string, plan: SubscriptionPlan, status: 'ACTIVE' | 'SUSPENDED') => Promise<void>;
+  updateTenantSubscription: (tenantId: string, plan: SubscriptionPlan, status: 'ACTIVE' | 'SUSPENDED', endDate?: string) => Promise<void>;
   hasEnteredApp: boolean;
   setHasEnteredApp: (val: boolean) => void;
   isAuthenticatingSuperAdmin: boolean;
@@ -515,7 +515,10 @@ export const usePOSStore = create<POSState>((set, get) => {
         try {
           await fetch('/api/tenants', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+              'Content-Type': 'application/json',
+              'x-super-admin-pin': '9999'
+            },
             body: JSON.stringify({ action: 'delete', tenantId })
           });
         } catch (err) {
@@ -554,7 +557,7 @@ export const usePOSStore = create<POSState>((set, get) => {
       });
     },
 
-    updateTenantSubscription: async (tenantId, plan, status) => {
+    updateTenantSubscription: async (tenantId, plan, status, endDate) => {
       const state = get();
 
       // Mettre à jour sur le Cloud si en ligne
@@ -562,8 +565,11 @@ export const usePOSStore = create<POSState>((set, get) => {
         try {
           await fetch('/api/tenants', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'update', tenantId, plan, status })
+            headers: { 
+              'Content-Type': 'application/json',
+              'x-super-admin-pin': '9999'
+            },
+            body: JSON.stringify({ action: 'update', tenantId, plan, status, subscriptionEndDate: endDate })
           });
         } catch (err) {
           console.error('Erreur API modification plan tenant:', err);
@@ -571,7 +577,7 @@ export const usePOSStore = create<POSState>((set, get) => {
       }
 
       const updatedTenants = state.tenants.map(t => 
-        t.id === tenantId ? { ...t, plan, status } : t
+        t.id === tenantId ? { ...t, plan, status, subscriptionEndDate: endDate ?? t.subscriptionEndDate } : t
       );
 
       set({ tenants: updatedTenants });

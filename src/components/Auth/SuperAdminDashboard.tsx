@@ -44,9 +44,16 @@ export const SuperAdminDashboard: React.FC = () => {
     return matchesPlan && matchesStatus && matchesSearch;
   });
 
-  const handlePlanChange = async (tenantId: string, newPlan: SubscriptionPlan, currentStatus: 'ACTIVE' | 'SUSPENDED') => {
-    await updateTenantSubscription(tenantId, newPlan, currentStatus);
+  const handlePlanChange = async (tenantId: string, newPlan: SubscriptionPlan, currentStatus: 'ACTIVE' | 'SUSPENDED', currentEndDate?: string) => {
+    await updateTenantSubscription(tenantId, newPlan, currentStatus, currentEndDate);
     showNotification('alert', 'Plan d\'abonnement mis à jour avec succès.');
+  };
+
+  const addDaysToSubscription = async (tenant: Tenant, days: number) => {
+    const currentEnd = tenant.subscriptionEndDate ? new Date(tenant.subscriptionEndDate) : new Date();
+    currentEnd.setDate(currentEnd.getDate() + days);
+    await updateTenantSubscription(tenant.id, tenant.plan, tenant.status, currentEnd.toISOString());
+    showNotification('alert', `Validité prolongée de ${days} jours pour ${tenant.establishmentName}.`);
   };
 
   const handleToggleStatus = async (tenantId: string, currentPlan: SubscriptionPlan, currentStatus: 'ACTIVE' | 'SUSPENDED') => {
@@ -210,6 +217,7 @@ export const SuperAdminDashboard: React.FC = () => {
                     <th className="py-4 px-4">Établissement</th>
                     <th className="py-4 px-4">Contact</th>
                     <th className="py-4 px-4 text-center">Plan Actuel</th>
+                    <th className="py-4 px-4 text-center">Validité</th>
                     <th className="py-4 px-4 text-center">Statut</th>
                     <th className="py-4 px-4 text-center">Utilisateurs</th>
                     <th className="py-4 px-4 text-right">Actions</th>
@@ -230,7 +238,7 @@ export const SuperAdminDashboard: React.FC = () => {
                         <td className="py-4 px-4 text-center">
                           <select
                             value={tenant.plan}
-                            onChange={(e) => handlePlanChange(tenant.id, e.target.value as SubscriptionPlan, tenant.status)}
+                            onChange={(e) => handlePlanChange(tenant.id, e.target.value as SubscriptionPlan, tenant.status, tenant.subscriptionEndDate)}
                             className={`px-2.5 py-1 rounded-lg border font-bold text-center focus:outline-none ${
                               tenant.plan === 'STANDARD' 
                                 ? 'bg-gray-800 text-gray-300 border-gray-700' 
@@ -243,6 +251,25 @@ export const SuperAdminDashboard: React.FC = () => {
                             <option value="PREMIUM">Premium</option>
                             <option value="ULTRA">Ultra</option>
                           </select>
+                        </td>
+                        <td className="py-4 px-4 text-center">
+                          <div className="flex flex-col items-center gap-1.5">
+                            <input 
+                              type="date"
+                              value={tenant.subscriptionEndDate ? tenant.subscriptionEndDate.split('T')[0] : ''}
+                              onChange={(e) => {
+                                const newDate = e.target.value;
+                                if (newDate) {
+                                  const dateObj = new Date(newDate);
+                                  handlePlanChange(tenant.id, tenant.plan, tenant.status, dateObj.toISOString());
+                                } else {
+                                  // Pour mettre "illimité" / enlever la date (si l'API l'accepte)
+                                  handlePlanChange(tenant.id, tenant.plan, tenant.status, undefined);
+                                }
+                              }}
+                              className="bg-dark-800 text-xs px-2 py-1 border border-dark-600 rounded text-gray-300 focus:outline-none focus:border-primary w-28 text-center"
+                            />
+                          </div>
                         </td>
                         <td className="py-4 px-4 text-center">
                           <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${

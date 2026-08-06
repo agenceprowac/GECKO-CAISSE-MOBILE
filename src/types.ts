@@ -7,6 +7,7 @@ export type Tenant = {
   adminPin: string;
   plan: SubscriptionPlan;
   status: 'ACTIVE' | 'SUSPENDED';
+  subscriptionEndDate?: string;
 };
 
 export type Category = {
