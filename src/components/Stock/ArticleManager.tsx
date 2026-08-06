@@ -196,8 +196,8 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({ onClose }) => {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-gray-400 mb-2 font-medium">Prix de Vente (F CFA)</label>
+                <div className="flex flex-col justify-end">
+                  <label className="block text-gray-400 mb-2 font-medium text-sm truncate">Prix de Vente</label>
                   <input 
                     type="number"
                     required
@@ -207,8 +207,8 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({ onClose }) => {
                     placeholder="Ex: 2000"
                   />
                 </div>
-                <div>
-                  <label className="block text-gray-400 mb-2 font-medium">Stock Initial</label>
+                <div className="flex flex-col justify-end">
+                  <label className="block text-gray-400 mb-2 font-medium text-sm truncate">Stock Initial</label>
                   <input 
                     type="number"
                     required
