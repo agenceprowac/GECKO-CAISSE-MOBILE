@@ -1,6 +1,7 @@
 // api/db.ts
 import { PrismaClient } from '@prisma/client';
-import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
+import { Pool } from 'pg';
+import { PrismaPg } from '@prisma/adapter-pg';
 
 // Prevent multiple instances of Prisma Client in development
 const globalForPrisma = global as unknown as { prisma: PrismaClient };
@@ -10,11 +11,10 @@ let prisma: PrismaClient;
 if (globalForPrisma.prisma) {
   prisma = globalForPrisma.prisma;
 } else {
-  // Sous Prisma 7, l'adaptateur gère lui-même l'instanciation de better-sqlite3.
-  // Nous passons un objet avec le paramètre 'url' pointant sur le fichier SQLite.
-  const adapter = new PrismaBetterSqlite3({
-    url: process.env.DATABASE_URL || 'file:./prisma/dev.db'
-  });
+  // Sous Prisma 7, l'adaptateur pg est requis pour Postgres
+  const connectionString = process.env.DATABASE_URL;
+  const pool = new Pool({ connectionString });
+  const adapter = new PrismaPg(pool);
 
   prisma = new PrismaClient({
     adapter,
