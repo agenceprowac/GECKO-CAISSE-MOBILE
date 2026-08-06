@@ -64,29 +64,31 @@ function App() {
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
                       (window.navigator as any).standalone === true;
 
+  const shouldShowApp = hasEnteredApp || isStandalone;
+
   return (
     <>
-      {!hasEnteredApp && !isStandalone && (
+      {!shouldShowApp && (
         <LandingPage onEnterApp={() => setHasEnteredApp(true)} />
       )}
 
-      {hasEnteredApp && isAuthenticatingSuperAdmin && (
+      {shouldShowApp && isAuthenticatingSuperAdmin && (
         <LockScreen />
       )}
 
-      {hasEnteredApp && !isAuthenticatingSuperAdmin && !currentTenant && (
+      {shouldShowApp && !isAuthenticatingSuperAdmin && !currentTenant && (
         <TenantAuth />
       )}
 
-      {hasEnteredApp && !isAuthenticatingSuperAdmin && currentTenant && !currentUser && (
+      {shouldShowApp && !isAuthenticatingSuperAdmin && currentTenant && !currentUser && (
         <LockScreen />
       )}
 
-      {hasEnteredApp && !isAuthenticatingSuperAdmin && currentTenant && currentUser && currentUser.role === 'SUPER_ADMIN' && (
+      {shouldShowApp && !isAuthenticatingSuperAdmin && currentTenant && currentUser && currentUser.role === 'SUPER_ADMIN' && (
         <SuperAdminDashboard />
       )}
 
-      {hasEnteredApp && !isAuthenticatingSuperAdmin && currentTenant && currentUser && currentUser.role !== 'SUPER_ADMIN' && (
+      {shouldShowApp && !isAuthenticatingSuperAdmin && currentTenant && currentUser && currentUser.role !== 'SUPER_ADMIN' && (
         <POSLayout />
       )}
 
