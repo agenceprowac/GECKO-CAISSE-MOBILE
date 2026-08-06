@@ -1,6 +1,6 @@
 // api/tenants.ts
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { prisma } from './db';
+import { prisma } from './db.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Configurer les headers CORS pour autoriser les requêtes cross-origin si nécessaire
