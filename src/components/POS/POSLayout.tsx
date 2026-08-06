@@ -26,7 +26,7 @@ export const POSLayout: React.FC = () => {
   // Mobile only toggle
   const [showCartMobile, setShowCartMobile] = useState(false);
 
-  const { currentUser, currentTable, cart, setCurrentUser, isOnline, isSyncing, getSalesByTenant, syncSalesWithServer } = usePOSStore();
+  const { currentTenant, currentUser, currentTable, cart, setCurrentUser, isOnline, isSyncing, getSalesByTenant, syncSalesWithServer } = usePOSStore();
   const canManageStock = currentUser?.role === 'ADMIN' || currentUser?.role === 'BARMAN';
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 
