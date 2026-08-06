@@ -49,6 +49,18 @@ function App() {
     };
   }, [setOnlineStatus, syncSalesWithServer, setDeferredPrompt]);
 
+  // Auto-refresh (Polling) pour synchroniser en temps réel
+  useEffect(() => {
+    // Ne rafraîchir que si on est dans un tenant actif
+    if (!currentTenant || isAuthenticatingSuperAdmin) return;
+    
+    const interval = setInterval(() => {
+      syncSalesWithServer();
+    }, 15000); // toutes les 15 secondes
+
+    return () => clearInterval(interval);
+  }, [currentTenant, isAuthenticatingSuperAdmin, syncSalesWithServer]);
+
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
                       (window.navigator as any).standalone === true;
 

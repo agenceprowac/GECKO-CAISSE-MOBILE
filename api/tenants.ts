@@ -72,7 +72,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
 
       // Créer l'utilisateur Administrateur par défaut associé
-      await prisma.user.create({
+      const admin = await prisma.user.create({
         data: {
           name: establishmentName + ' Admin',
           pinCode: adminPin,
@@ -81,7 +81,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       });
 
-      return res.status(201).json(tenant);
+      return res.status(201).json({ tenant, admin });
     }
 
     // Sécurisation Super-Admin pour Update / Delete
@@ -124,7 +124,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const hasDbUrl = !!process.env.DATABASE_URL;
     return res.status(500).json({ 
       error: 'Erreur interne du serveur (Base de données).', 
-      details: error.message,
+      details: error.stack || error.message,
       configError: !hasDbUrl ? "La variable DATABASE_URL est manquante sur Vercel. Veuillez la configurer dans l'administration Vercel." : "La base de données Supabase refuse la connexion. Vérifiez le mot de passe."
     });
   }

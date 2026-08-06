@@ -25,6 +25,9 @@ interface POSState {
   isSyncing: boolean;
   syncSalesWithServer: () => Promise<void>;
   syncCloudData: (tenantIdOverride?: string) => Promise<void>;
+  hasUnsyncedProductsChanges: boolean;
+  hasUnsyncedTablesChanges: boolean;
+  hasUnsyncedUsersChanges: boolean;
 
   // Products & Inventory History
   products: Product[];
@@ -146,6 +149,9 @@ export const usePOSStore = create<POSState>((set, get) => {
       sales: updates.sales !== undefined ? updates.sales : state.sales,
       stockHistory: updates.stockHistory !== undefined ? updates.stockHistory : state.stockHistory,
       hasEnteredApp: updates.hasEnteredApp !== undefined ? updates.hasEnteredApp : state.hasEnteredApp,
+      hasUnsyncedProductsChanges: updates.hasUnsyncedProductsChanges !== undefined ? updates.hasUnsyncedProductsChanges : state.hasUnsyncedProductsChanges,
+      hasUnsyncedTablesChanges: updates.hasUnsyncedTablesChanges !== undefined ? updates.hasUnsyncedTablesChanges : state.hasUnsyncedTablesChanges,
+      hasUnsyncedUsersChanges: updates.hasUnsyncedUsersChanges !== undefined ? updates.hasUnsyncedUsersChanges : state.hasUnsyncedUsersChanges,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
   };
@@ -178,6 +184,9 @@ export const usePOSStore = create<POSState>((set, get) => {
 
     isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
     isSyncing: false,
+    hasUnsyncedProductsChanges: persistedData.hasUnsyncedProductsChanges || false,
+    hasUnsyncedTablesChanges: persistedData.hasUnsyncedTablesChanges || false,
+    hasUnsyncedUsersChanges: persistedData.hasUnsyncedUsersChanges || false,
 
     showNotification: (type, message, onConfirm) => set({ notification: { type, message, onConfirm } }),
     hideNotification: () => set({ notification: null }),
@@ -193,9 +202,9 @@ export const usePOSStore = create<POSState>((set, get) => {
       const tenantId = tenantIdOverride || state.currentTenant?.id;
       if (!tenantId) return;
 
-      // Si le client est offline, on ne tente pas d'appeler l'API
-      if (!state.isOnline) return;
-
+      // En mode local, le serveur est joignable même sans internet,
+      // on essaie toujours d'appeler l'API. Le try/catch gérera l'échec si le serveur est éteint.
+      
       set({ isSyncing: true });
 
       try {
@@ -216,15 +225,19 @@ export const usePOSStore = create<POSState>((set, get) => {
           headers['X-Tenant-Pin'] = state.currentTenant.adminPin;
         }
 
+        const sentProductsChanges = state.hasUnsyncedProductsChanges;
+        const sentTablesChanges = state.hasUnsyncedTablesChanges;
+        const sentUsersChanges = state.hasUnsyncedUsersChanges;
+
         const response = await fetch('/api/sync', {
           method: 'POST',
           headers,
           body: JSON.stringify({
             tenantId,
             localSales: unsyncedSales,
-            localProducts: tenantProducts,
-            localTables: tenantTables,
-            localUsers: tenantUsers,
+            localProducts: sentProductsChanges ? tenantProducts : undefined,
+            localTables: sentTablesChanges ? tenantTables : undefined,
+            localUsers: sentUsersChanges ? tenantUsers : undefined,
             localStockHistory: tenantStockHistory
           })
         });
@@ -268,7 +281,10 @@ export const usePOSStore = create<POSState>((set, get) => {
           users: finalUsers,
           stockHistory: finalStockHistory,
           sales: finalSales,
-          isSyncing: false
+          isSyncing: false,
+          hasUnsyncedProductsChanges: state.hasUnsyncedProductsChanges && !sentProductsChanges,
+          hasUnsyncedTablesChanges: state.hasUnsyncedTablesChanges && !sentTablesChanges,
+          hasUnsyncedUsersChanges: state.hasUnsyncedUsersChanges && !sentUsersChanges
         });
 
         // Mettre à jour le tenant actuel s'il a changé (ex: son plan ou statut modifié par le Super-Admin)
@@ -339,16 +355,7 @@ export const usePOSStore = create<POSState>((set, get) => {
           return false;
         }
 
-        const newTenant = await response.json();
-
-        // Créer l'employé admin par défaut en local pour cet appareil
-        const adminUser: User = {
-          id: 'usr_' + crypto.randomUUID(),
-          name: establishmentName + ' Admin',
-          pinCode: adminPin,
-          role: 'ADMIN',
-          tenantId: newTenant.id
-        };
+        const { tenant: newTenant, admin: adminUser } = await response.json();
 
         const updatedTenants = [...state.tenants, newTenant];
         const updatedUsers = [...state.users, adminUser];
@@ -399,7 +406,7 @@ export const usePOSStore = create<POSState>((set, get) => {
 
         // Activer l'état temporaire d'authentification Super-Admin
         set({ 
-          currentTenant: null, // Aucun tenant de caisse !
+          currentTenant: superAdminTenant,
           currentUser: null,
           isAuthenticatingSuperAdmin: true,
           hasEnteredApp: true
@@ -626,31 +633,34 @@ export const usePOSStore = create<POSState>((set, get) => {
 
       set({ 
         products: updatedProducts,
-        stockHistory: updatedHistory
+        stockHistory: updatedHistory,
+        hasUnsyncedProductsChanges: true
       });
 
       persist({ 
         products: updatedProducts,
         stockHistory: updatedHistory
       });
+
+      get().syncCloudData().catch(console.error);
     },
 
     addProduct: (product) => {
       const tenantId = get().currentTenant?.id;
       const updatedProducts = [...get().products, { ...product, id: 'prd_' + crypto.randomUUID(), tenantId }];
-      set({ products: updatedProducts });
+      set({ products: updatedProducts, hasUnsyncedProductsChanges: true });
       persist({ products: updatedProducts });
     },
 
     updateProduct: (updatedProduct) => {
       const updatedProducts = get().products.map(p => p.id === updatedProduct.id ? updatedProduct : p);
-      set({ products: updatedProducts });
+      set({ products: updatedProducts, hasUnsyncedProductsChanges: true });
       persist({ products: updatedProducts });
     },
 
     deleteProduct: (productId) => {
       const updatedProducts = get().products.filter(p => p.id !== productId);
-      set({ products: updatedProducts });
+      set({ products: updatedProducts, hasUnsyncedProductsChanges: true });
       persist({ products: updatedProducts });
     },
 
@@ -658,13 +668,13 @@ export const usePOSStore = create<POSState>((set, get) => {
     addTable: (name) => {
       const tenantId = get().currentTenant?.id;
       const updatedTables = [...get().tables, { id: 'tbl_' + crypto.randomUUID(), name, tenantId }];
-      set({ tables: updatedTables });
+      set({ tables: updatedTables, hasUnsyncedTablesChanges: true });
       persist({ tables: updatedTables });
     },
 
     updateTable: (updatedTable) => {
       const updatedTables = get().tables.map(t => t.id === updatedTable.id ? updatedTable : t);
-      set({ tables: updatedTables });
+      set({ tables: updatedTables, hasUnsyncedTablesChanges: true });
       persist({ tables: updatedTables });
     },
 
@@ -672,17 +682,20 @@ export const usePOSStore = create<POSState>((set, get) => {
       const updatedTables = get().tables.filter(t => t.id !== tableId);
       set({ 
         tables: updatedTables,
-        currentTable: get().currentTable?.id === tableId ? null : get().currentTable
+        currentTable: get().currentTable?.id === tableId ? null : get().currentTable,
+        hasUnsyncedTablesChanges: true
       });
       persist({ tables: updatedTables });
+      get().syncCloudData().catch(console.error);
     },
 
     // Users actions
     addUser: (user) => {
       const tenantId = get().currentTenant?.id;
       const updatedUsers = [...get().users, { ...user, id: 'usr_' + crypto.randomUUID(), tenantId }];
-      set({ users: updatedUsers });
+      set({ users: updatedUsers, hasUnsyncedUsersChanges: true });
       persist({ users: updatedUsers });
+      get().syncCloudData().catch(console.error);
     },
 
     updateUser: (updatedUser) => {
@@ -690,7 +703,8 @@ export const usePOSStore = create<POSState>((set, get) => {
       const isSelf = get().currentUser?.id === updatedUser.id;
       set({ 
         users: updatedUsers,
-        currentUser: isSelf ? updatedUser : get().currentUser
+        currentUser: isSelf ? updatedUser : get().currentUser,
+        hasUnsyncedUsersChanges: true
       });
       persist({ users: updatedUsers });
     },
@@ -700,7 +714,8 @@ export const usePOSStore = create<POSState>((set, get) => {
       const isSelf = get().currentUser?.id === userId;
       set({ 
         users: updatedUsers,
-        currentUser: isSelf ? null : get().currentUser
+        currentUser: isSelf ? null : get().currentUser,
+        hasUnsyncedUsersChanges: true
       });
       persist({ users: updatedUsers });
     },
@@ -727,7 +742,7 @@ export const usePOSStore = create<POSState>((set, get) => {
           id: 'sale_' + crypto.randomUUID(),
           createdAt: formattedDate,
           tenantId,
-          synced: isOnline,
+          synced: false,
           rawDate: now.toISOString()
         },
         ...get().sales
@@ -736,10 +751,10 @@ export const usePOSStore = create<POSState>((set, get) => {
       set({ sales: updatedSales });
       persist({ sales: updatedSales });
 
-      // Si on est en ligne, on synchronise immédiatement
-      if (isOnline) {
-        get().syncSalesWithServer();
-      }
+      persist({ sales: updatedSales });
+
+      // Synchronisation immédiate vers la BDD locale en tâche de fond
+      get().syncSalesWithServer();
     },
 
     // Cart actions

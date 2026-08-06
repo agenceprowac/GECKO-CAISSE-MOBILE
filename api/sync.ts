@@ -47,8 +47,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // 1. Enregistrer ou mettre à jour les produits locaux s'il y a lieu
-    if (localProducts && Array.isArray(localProducts)) {
+    // 1. Enregistrer ou mettre à jour les produits locaux s'il y a lieu (uniquement si envoyé par le client)
+    if (localProducts !== undefined && Array.isArray(localProducts)) {
+      // La suppression brute (deleteMany) est retirée car si le produit a déjà été vendu (SaleItem), 
+      // SQLite lancera une erreur de contrainte de clé étrangère (FOREIGN KEY constraint failed) 
+      // et fera planter toute la synchronisation.
+      // Dans une version plus avancée, on utilisera un soft-delete (isAvailable: false).
+
       for (const prod of localProducts) {
         // Enregistrer la catégorie de démo si elle n'existe pas en base
         let categoryId = prod.categoryId;
@@ -87,8 +92,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // 2. Synchroniser les tables locales
-    if (localTables && Array.isArray(localTables)) {
+    // 2. Synchroniser les tables locales (uniquement si envoyé par le client)
+    if (localTables !== undefined && Array.isArray(localTables)) {
+      // On désactive la suppression brute pour éviter les plantages sur contraintes SQL
+      // if (localTables.length > 0) { ... }
+
       for (const tbl of localTables) {
         await prisma.table.upsert({
           where: { id: tbl.id },
@@ -102,8 +110,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // 3. Synchroniser les profils utilisateurs
-    if (localUsers && Array.isArray(localUsers)) {
+    // 3. Synchroniser les profils utilisateurs (uniquement si envoyé par le client)
+    if (localUsers !== undefined && Array.isArray(localUsers)) {
+      // On désactive la suppression brute des utilisateurs pour les mêmes raisons de sécurité.
+      // if (localUsers.length > 0) { ... }
+
       for (const usr of localUsers) {
         // Ignorer l'utilisateur virtuel Super-Admin dans le stockage du tenant
         if (usr.role === 'SUPER_ADMIN') continue;
@@ -169,7 +180,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           for (const item of sale.items) {
             await prisma.saleItem.create({
               data: {
-                id: item.id || crypto.randomUUID(),
                 saleId: sale.id,
                 productId: item.product.id,
                 productName: item.product.name,
