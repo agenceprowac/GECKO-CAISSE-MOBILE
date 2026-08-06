@@ -74,19 +74,23 @@ export const POSLayout: React.FC = () => {
             <Menu size={24} />
           </button>
           <div className="flex items-center gap-3">
-            <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">
-              BarPOS
+            <h1 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent truncate max-w-[120px] sm:max-w-[200px]">
+              {currentTenant?.establishmentName 
+                ? (currentTenant.establishmentName.length > 10 
+                    ? currentTenant.establishmentName.substring(0, 10) + '...' 
+                    : currentTenant.establishmentName)
+                : 'BarPOS'}
             </h1>
             
             {/* Raccourci d'accès direct aux Articles pour l'ADMIN */}
             {currentUser?.role === 'ADMIN' && (
               <button
                 onClick={() => setShowArticleManager(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/20 text-primary hover:bg-primary hover:text-white rounded-xl text-xs font-bold transition-all border border-primary/30 cursor-pointer shadow-lg shadow-primary/5 active:scale-95 ml-2"
+                className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 bg-primary/20 text-primary hover:bg-primary hover:text-white rounded-xl text-xs font-bold transition-all border border-primary/30 cursor-pointer shadow-lg shadow-primary/5 active:scale-95 sm:ml-2 shrink-0"
                 title="Ouvrir le Catalogue d'Articles"
               >
                 <Tag size={14} />
-                <span>Articles</span>
+                <span className="hidden sm:inline">Articles</span>
               </button>
             )}
 
@@ -94,49 +98,51 @@ export const POSLayout: React.FC = () => {
             {canManageStock && (
               <button
                 onClick={() => setShowStockManager(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/20 text-primary hover:bg-primary hover:text-white rounded-xl text-xs font-bold transition-all border border-primary/30 cursor-pointer shadow-lg shadow-primary/5 active:scale-95 ml-2"
+                className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 bg-primary/20 text-primary hover:bg-primary hover:text-white rounded-xl text-xs font-bold transition-all border border-primary/30 cursor-pointer shadow-lg shadow-primary/5 active:scale-95 shrink-0"
                 title="Ouvrir la Gestion des Stocks"
               >
                 <PackagePlus size={14} />
-                <span>Stocks</span>
+                <span className="hidden sm:inline">Stocks</span>
               </button>
             )}
             
             {/* Status Réseau / Synchro */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2 shrink-0 ml-auto">
               {isOnline ? (
                 isSyncing ? (
-                  <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-500 text-[10px] font-bold border border-yellow-500/20">
+                  <span className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-500 text-[9px] sm:text-[10px] font-bold border border-yellow-500/20 whitespace-nowrap">
                     <RefreshCw size={10} className="animate-spin" />
-                    Synchro...
+                    <span className="hidden sm:inline">Synchro...</span>
                   </span>
                 ) : unsyncedCount > 0 ? (
                   <button 
                     onClick={() => syncSalesWithServer()}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/20 text-blue-400 hover:bg-blue-500 hover:text-white text-[10px] font-bold border border-blue-500/30 transition-all cursor-pointer animate-pulse"
+                    className="flex items-center gap-1 px-1.5 sm:px-2.5 py-1 rounded-full bg-blue-500/20 text-blue-400 hover:bg-blue-500 hover:text-white text-[9px] sm:text-[10px] font-bold border border-blue-500/30 transition-all cursor-pointer animate-pulse whitespace-nowrap"
                     title="Cliquer pour synchroniser les ventes locales"
                   >
                     <RefreshCw size={10} />
-                    Synchro ({unsyncedCount})
+                    <span className="hidden sm:inline">Synchro </span>({unsyncedCount})
                   </button>
                 ) : (
-                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 text-[10px] font-bold border border-green-500/20">
+                  <span className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 text-[9px] sm:text-[10px] font-bold border border-green-500/20 whitespace-nowrap">
                     <Wifi size={10} />
-                    En Ligne
+                    <span className="hidden sm:inline">En Ligne</span>
                   </span>
                 )
               ) : (
                 <span 
-                  className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-400 text-[10px] font-bold border border-orange-500/20"
+                  className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-400 text-[9px] sm:text-[10px] font-bold border border-orange-500/20 whitespace-nowrap"
                   title="Vos ventes sont sauvegardées localement et seront envoyées dès le retour du réseau."
                 >
                   <WifiOff size={10} />
-                  Hors Ligne {unsyncedCount > 0 && `(${unsyncedCount} loc)`}
+                  <span className="hidden sm:inline">Hors Ligne </span>
+                  {unsyncedCount > 0 && `(${unsyncedCount})`}
                 </span>
               )}
             </div>
           </div>
         </div>
+
         
         <div className="flex items-center gap-4">
           {currentView === 'pos' && (

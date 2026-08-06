@@ -104,14 +104,16 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({ onClose }) => {
         {!isCreating ? (
           <>
             {/* Search and Create Actions */}
-            <div className="p-4 border-b border-dark-700 bg-dark-900 shrink-0 flex gap-4">
-              <input 
-                type="text" 
-                placeholder="Rechercher un article..." 
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="flex-1 px-4 py-3 bg-dark-800 border border-dark-700 rounded-xl focus:outline-none focus:border-primary transition-colors text-white"
-              />
+            <div className="p-3 sm:p-4 border-b border-dark-700 flex flex-col sm:flex-row gap-3 sm:gap-4">
+              <div className="flex-1 relative w-full">
+                <input
+                  type="text"
+                  placeholder="Rechercher un article..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full px-4 py-3 bg-dark-800 border border-dark-700 rounded-xl focus:outline-none focus:border-primary transition-colors text-white"
+                />
+              </div>
               <button 
                 onClick={() => {
                   setEditingProduct(null);
@@ -121,10 +123,11 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({ onClose }) => {
                   setNewImage('');
                   setIsCreating(true);
                 }}
-                className="px-6 py-3 bg-primary text-white rounded-xl font-bold hover:bg-primary/90 transition-colors flex items-center gap-2 shrink-0 animate-pulse"
+                className="px-4 sm:px-6 py-3 bg-primary text-white rounded-xl font-bold hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 shrink-0 animate-pulse w-full sm:w-auto"
               >
                 <Plus size={20} />
-                Créer un Article
+                <span className="hidden sm:inline">Créer un Article</span>
+                <span className="sm:hidden">Nouvel Article</span>
               </button>
             </div>
 
