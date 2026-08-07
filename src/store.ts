@@ -174,6 +174,7 @@ export const usePOSStore = create<POSState>((set, get) => {
     hasEnteredApp: persistedData.hasEnteredApp || false,
     isAuthenticatingSuperAdmin: false,
     setAuthenticatingSuperAdmin: (val) => set({ isAuthenticatingSuperAdmin: val }),
+    impersonatedFromSuperAdmin: false,
 
     getStockHistoryByTenant: () => {
       const tenantId = get().currentTenant?.id;
