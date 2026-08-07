@@ -162,8 +162,8 @@ export const ProfilePage: React.FC = () => {
           )}
         </div>
 
-        {/* Section Paramètres de Paiement (Seulement pour l'Administrateur) */}
-        {currentUser?.role === 'ADMIN' && currentTenant && (
+        {/* Section Paramètres de Paiement (Seulement pour l'Administrateur) - TEMPORAIREMENT MASQUÉ */}
+        {false && currentUser?.role === 'ADMIN' && currentTenant && (
           <div className="p-6 bg-dark-900 border border-dark-700 rounded-3xl shadow-xl flex flex-col gap-6 mt-4">
             <div className="flex items-center gap-3 text-blue-400 border-b border-dark-700 pb-4">
               <QrCode size={24} />
