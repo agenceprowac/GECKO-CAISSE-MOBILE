@@ -8,6 +8,10 @@ export type Tenant = {
   plan: SubscriptionPlan;
   status: 'ACTIVE' | 'SUSPENDED';
   subscriptionEndDate?: string;
+  mobileMoneyQrCode?: string;
+  _count?: {
+    users: number;
+  };
 };
 
 export type Category = {

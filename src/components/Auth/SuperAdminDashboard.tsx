@@ -218,7 +218,7 @@ export const SuperAdminDashboard: React.FC = () => {
                 </thead>
                 <tbody>
                   {filteredTenants.map(tenant => {
-                    const tenantUsersCount = users.filter(u => u.tenantId === tenant.id).length;
+                    const tenantUsersCount = tenant._count?.users ?? users.filter(u => u.tenantId === tenant.id).length;
                     
                     return (
                       <tr key={tenant.id} className="border-b border-dark-700/50 hover:bg-dark-700/20 transition-colors">

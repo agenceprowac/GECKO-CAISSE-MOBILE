@@ -245,7 +245,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Si on est le Super-Admin, on veut également charger tous les tenants
     let allTenants: any[] = [];
     if (tenantId === 'tnt_super_admin') {
-      allTenants = await prisma.tenant.findMany();
+      allTenants = await prisma.tenant.findMany({
+        include: {
+          _count: {
+            select: { users: true }
+          }
+        }
+      });
     }
 
     return res.status(200).json({
