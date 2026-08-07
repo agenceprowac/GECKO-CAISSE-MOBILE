@@ -10,10 +10,16 @@ interface POSState {
   logoutTenant: () => void;
   deleteTenant: (tenantId: string) => Promise<void>;
   updateTenantSubscription: (tenantId: string, plan: SubscriptionPlan, status: 'ACTIVE' | 'SUSPENDED', endDate?: string) => Promise<void>;
+  updateTenantQrCode: (tenantId: string, qrCodeBase64: string) => Promise<void>;
   hasEnteredApp: boolean;
   setHasEnteredApp: (val: boolean) => void;
   isAuthenticatingSuperAdmin: boolean;
   setAuthenticatingSuperAdmin: (val: boolean) => void;
+
+  // Impersonation (Super Admin Access)
+  impersonatedFromSuperAdmin: boolean;
+  impersonateTenant: (tenant: Tenant) => Promise<void>;
+  exitImpersonation: () => void;
 
   // PWA Install Prompt
   deferredPrompt: any;
@@ -130,7 +136,8 @@ const loadPersistedData = () => {
     sales: [],
     stockHistory: [],
     hasEnteredApp: false,
-    isAuthenticatingSuperAdmin: false
+    isAuthenticatingSuperAdmin: false,
+    impersonatedFromSuperAdmin: false
   };
 };
 
@@ -507,6 +514,55 @@ export const usePOSStore = create<POSState>((set, get) => {
       persist({ currentTenant: null });
     },
 
+    impersonateTenant: async (tenant) => {
+      const state = get();
+      
+      // Trouver l'utilisateur admin de ce tenant (ou en créer un factice pour le support)
+      // L'API a potentiellement chargé quelques users, on essaie d'en trouver un.
+      let adminUser = state.users.find(u => u.tenantId === tenant.id && u.role === 'ADMIN');
+      
+      if (!adminUser) {
+        adminUser = {
+          id: `support_${tenant.id}`,
+          name: 'Support Gecko',
+          pinCode: '0000',
+          role: 'ADMIN',
+          tenantId: tenant.id
+        };
+      }
+
+      set({
+        currentTenant: tenant,
+        currentUser: adminUser,
+        isAuthenticatingSuperAdmin: false,
+        impersonatedFromSuperAdmin: true,
+        hasEnteredApp: true // Basculer directement dans l'application
+      });
+
+      // Synchroniser les données pour cet établissement
+      await get().syncCloudData(tenant.id);
+    },
+
+    exitImpersonation: () => {
+      // Reconstituer le tenant virtuel du Super Admin
+      const superAdminTenant: Tenant = {
+        id: 'tnt_super_admin',
+        email: 'admin@gecko.com',
+        establishmentName: 'Administration Cloud',
+        adminPin: '9999',
+        plan: 'ULTRA',
+        status: 'ACTIVE'
+      };
+
+      set({
+        currentTenant: superAdminTenant,
+        currentUser: null, // Le super admin n'est pas un utilisateur caissier
+        impersonatedFromSuperAdmin: false,
+        isAuthenticatingSuperAdmin: true,
+        hasEnteredApp: true // Rester dans le dashboard SuperAdmin
+      });
+    },
+
     deleteTenant: async (tenantId) => {
       const state = get();
       
@@ -582,6 +638,34 @@ export const usePOSStore = create<POSState>((set, get) => {
 
       set({ tenants: updatedTenants });
       persist({ tenants: updatedTenants });
+    },
+
+    updateTenantQrCode: async (tenantId, qrCodeBase64) => {
+      const state = get();
+
+      if (state.isOnline) {
+        try {
+          await fetch('/api/tenants', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'update_qr', tenantId, qrCodeBase64 })
+          });
+        } catch (err) {
+          console.error('Erreur API modification QR Code:', err);
+        }
+      }
+
+      const updatedTenants = state.tenants.map(t => 
+        t.id === tenantId ? { ...t, mobileMoneyQrCode: qrCodeBase64 } : t
+      );
+
+      set({ tenants: updatedTenants });
+      persist({ tenants: updatedTenants });
+
+      // Mettre à jour currentTenant s'il s'agit du tenant actuellement connecté
+      if (state.currentTenant?.id === tenantId) {
+        set({ currentTenant: { ...state.currentTenant, mobileMoneyQrCode: qrCodeBase64 } });
+      }
     },
 
     // Getters filtered by active tenant

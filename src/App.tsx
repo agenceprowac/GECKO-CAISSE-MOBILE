@@ -13,6 +13,8 @@ function App() {
   const hasEnteredApp = usePOSStore(state => state.hasEnteredApp);
   const setHasEnteredApp = usePOSStore(state => state.setHasEnteredApp);
   const isAuthenticatingSuperAdmin = usePOSStore(state => state.isAuthenticatingSuperAdmin);
+  const impersonatedFromSuperAdmin = usePOSStore(state => state.impersonatedFromSuperAdmin);
+  const exitImpersonation = usePOSStore(state => state.exitImpersonation);
   
   const setOnlineStatus = usePOSStore(state => state.setOnlineStatus);
   const syncSalesWithServer = usePOSStore(state => state.syncSalesWithServer);
@@ -68,6 +70,21 @@ function App() {
 
   return (
     <>
+      {impersonatedFromSuperAdmin && (
+        <div className="bg-red-600 text-white px-4 py-2 flex items-center justify-between shadow-lg relative z-[9999]">
+          <div className="flex items-center gap-2 font-bold text-sm">
+            <span className="w-2.5 h-2.5 rounded-full bg-white animate-pulse"></span>
+            MODE SUPPORT - {currentTenant?.establishmentName}
+          </div>
+          <button 
+            onClick={() => exitImpersonation()}
+            className="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-xs font-bold transition-colors flex items-center gap-2 cursor-pointer"
+          >
+            Quitter
+          </button>
+        </div>
+      )}
+
       {!shouldShowApp && (
         <LandingPage onEnterApp={() => setHasEnteredApp(true)} />
       )}

@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { usePOSStore } from '../../store';
-import { X, Banknote, CreditCard, Smartphone } from 'lucide-react';
+import { X, Banknote, CreditCard, Smartphone, QrCode } from 'lucide-react';
 
 interface PaymentModalProps {
   onClose: () => void;
 }
 
 export const PaymentModal: React.FC<PaymentModalProps> = ({ onClose }) => {
-  const { total, clearCart, cart, updateStock, showNotification, addSale, currentUser } = usePOSStore();
+  const { total, clearCart, cart, updateStock, showNotification, addSale, currentUser, currentTenant } = usePOSStore();
   const [amountGiven, setAmountGiven] = useState<string>('');
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CARD' | 'MOBILE'>('CASH');
 
@@ -143,13 +143,40 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ onClose }) => {
             </>
           ) : (
             <div className="flex-1 flex flex-col justify-center items-center text-center p-8">
-              <div className="w-24 h-24 bg-primary/20 rounded-full flex items-center justify-center text-primary mb-6 animate-pulse">
-                {paymentMethod === 'CARD' ? <CreditCard size={48} /> : <Smartphone size={48} />}
-              </div>
-              <h3 className="text-2xl font-bold mb-2">En attente de paiement</h3>
-              <p className="text-gray-400 font-medium text-lg">
-                Veuillez procéder au paiement de {Math.round(total).toLocaleString('fr-FR')} F CFA sur le terminal ou via l'application mobile.
-              </p>
+              {paymentMethod === 'MOBILE' ? (
+                <>
+                  {currentTenant?.mobileMoneyQrCode ? (
+                    <div className="bg-white p-2 rounded-xl mb-4 shadow-lg shadow-blue-500/20 border-2 border-blue-500/50">
+                      <img src={currentTenant.mobileMoneyQrCode} alt="QR Code Marchand" className="w-48 h-48 object-contain" />
+                    </div>
+                  ) : (
+                    <div className="bg-white p-4 rounded-xl mb-4 shadow-lg shadow-blue-500/20 border-2 border-blue-500/50">
+                      <QrCode size={150} className="text-gray-900" />
+                    </div>
+                  )}
+                  
+                  <h3 className="text-2xl font-bold mb-2 text-blue-400">Scanner pour Payer</h3>
+                  <p className="text-gray-400 font-medium text-sm px-4">
+                    Demandez au client de scanner ce QR Code avec son application de paiement pour régler la somme de <strong className="text-white text-lg">{Math.round(total).toLocaleString('fr-FR')} F CFA</strong>.
+                  </p>
+                  
+                  {!currentTenant?.mobileMoneyQrCode && (
+                    <p className="text-xs text-red-400 mt-2 font-medium bg-red-500/10 px-3 py-1 rounded">
+                      Astuce : Allez dans votre Profil Gérant pour configurer votre propre QR Code marchand Wave.
+                    </p>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="w-24 h-24 bg-primary/20 rounded-full flex items-center justify-center text-primary mb-6 animate-pulse">
+                    <CreditCard size={48} />
+                  </div>
+                  <h3 className="text-2xl font-bold mb-2">En attente de paiement</h3>
+                  <p className="text-gray-400 font-medium text-lg">
+                    Veuillez procéder au paiement de {Math.round(total).toLocaleString('fr-FR')} F CFA sur le terminal bancaire.
+                  </p>
+                </>
+              )}
             </div>
           )}
 

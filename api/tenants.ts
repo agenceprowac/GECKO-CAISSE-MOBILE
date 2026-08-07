@@ -112,7 +112,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json(updatedTenant);
     }
 
-    // 4. Suppression définitive (Super-Admin)
+    // 4. Mise à jour du QR Code Mobile Money (Par le Gérant)
+    if (action === 'update_qr') {
+      const { qrCodeBase64 } = req.body;
+      if (!tenantId) return res.status(400).json({ error: 'ID de l\'établissement manquant.' });
+
+      const updatedTenant = await prisma.tenant.update({
+        where: { id: tenantId },
+        data: { mobileMoneyQrCode: qrCodeBase64 || null }
+      });
+
+      return res.status(200).json(updatedTenant);
+    }
+
+    // 5. Suppression définitive (Super-Admin)
     if (action === 'delete') {
       if (!isSuperAdmin) return res.status(401).json({ error: 'Non autorisé.' });
       if (!tenantId) return res.status(400).json({ error: 'ID de l\'établissement manquant.' });

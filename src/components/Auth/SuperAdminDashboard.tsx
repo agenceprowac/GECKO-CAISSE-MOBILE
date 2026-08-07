@@ -9,12 +9,13 @@ import {
   UserCheck,
   UserMinus,
   Trash2,
-  Globe
+  Globe,
+  LogIn
 } from 'lucide-react';
 import type { SubscriptionPlan, Tenant } from '../../types';
 
 export const SuperAdminDashboard: React.FC = () => {
-  const { tenants, users, sales, deleteTenant, updateTenantSubscription, showNotification, logoutTenant, setHasEnteredApp } = usePOSStore();
+  const { tenants, users, sales, deleteTenant, updateTenantSubscription, showNotification, logoutTenant, setHasEnteredApp, impersonateTenant } = usePOSStore();
   
   const [filterPlan, setFilterPlan] = useState<'ALL' | SubscriptionPlan>('ALL');
   const [filterStatus, setFilterStatus] = useState<'ALL' | 'ACTIVE' | 'SUSPENDED'>('ALL');
@@ -276,15 +277,32 @@ export const SuperAdminDashboard: React.FC = () => {
                         <td className="py-4 px-4 text-center text-gray-300 font-semibold">
                           {tenantUsersCount}
                         </td>
-                        <td className="py-4 px-4 text-right flex items-center justify-end gap-2">
+                        <td className="py-4 px-4 text-right space-x-2 whitespace-nowrap">
+                          <button
+                            onClick={() => {
+                              showNotification(
+                                'confirm',
+                                `Voulez-vous accéder à l'espace "${tenant.establishmentName}" en mode support ?`,
+                                () => {
+                                  impersonateTenant(tenant);
+                                }
+                              );
+                            }}
+                            className="p-2 bg-blue-500/20 text-blue-400 hover:bg-blue-500 hover:text-white rounded-lg transition-colors inline-flex items-center gap-1.5"
+                            title="Accéder à l'espace (Mode Support)"
+                          >
+                            <LogIn size={16} />
+                            <span className="text-xs font-bold hidden xl:inline">Accéder</span>
+                          </button>
+                          
                           <button
                             onClick={() => handleToggleStatus(tenant.id, tenant.plan, tenant.status)}
-                            className={`p-2 rounded-xl border transition-all cursor-pointer ${
-                              tenant.status === 'ACTIVE'
-                                ? 'bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20'
-                                : 'bg-green-500/10 text-green-400 border-green-500/20 hover:bg-green-500/20'
+                            className={`p-2 rounded-lg transition-colors ${
+                              tenant.status === 'ACTIVE' 
+                                ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500 hover:text-white' 
+                                : 'bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white'
                             }`}
-                            title={tenant.status === 'ACTIVE' ? 'Suspendre l\'espace' : 'Activer l\'espace'}
+                            title={tenant.status === 'ACTIVE' ? 'Suspendre' : 'Réactiver'}
                           >
                             {tenant.status === 'ACTIVE' ? <UserMinus size={14} /> : <UserCheck size={14} />}
                           </button>

@@ -18,6 +18,7 @@ model Tenant {
   plan              String            @default("STANDARD")
   status            String            @default("ACTIVE")
   subscriptionEndDate DateTime?
+  mobileMoneyQrCode String?           // @db.Text (pour stocker le base64 s'il est long)
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
   

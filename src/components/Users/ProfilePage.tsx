@@ -1,12 +1,13 @@
 import React from 'react';
 import { usePOSStore } from '../../store';
-import { User, DollarSign, ShoppingBag, CreditCard, Banknote, Smartphone, Clock, ShieldAlert } from 'lucide-react';
+import { User, DollarSign, ShoppingBag, CreditCard, Banknote, Smartphone, Clock, ShieldAlert, QrCode, Upload, X } from 'lucide-react';
 
 export const ProfilePage: React.FC = () => {
   const currentUser = usePOSStore(state => state.currentUser);
   const currentTenant = usePOSStore(state => state.currentTenant);
   const deleteTenant = usePOSStore(state => state.deleteTenant);
   const showNotification = usePOSStore(state => state.showNotification);
+  const updateTenantQrCode = usePOSStore(state => state.updateTenantQrCode);
   const getSalesByTenant = usePOSStore(state => state.getSalesByTenant);
   const sales = getSalesByTenant();
 
@@ -17,6 +18,23 @@ export const ProfilePage: React.FC = () => {
   const totalSalesAmount = mySales.reduce((sum, sale) => sum + sale.total, 0);
   const salesCount = mySales.length;
   const averageBasket = salesCount > 0 ? Math.round(totalSalesAmount / salesCount) : 0;
+
+  const handleQrUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        showNotification('error', 'L\'image est trop grande (max 2 Mo).');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        updateTenantQrCode(currentTenant!.id, base64String);
+        showNotification('success', 'QR Code de paiement mis à jour !');
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const getPaymentMethodIcon = (method: 'CASH' | 'CARD' | 'MOBILE') => {
     switch (method) {
@@ -143,6 +161,52 @@ export const ProfilePage: React.FC = () => {
             </div>
           )}
         </div>
+
+        {/* Section Paramètres de Paiement (Seulement pour l'Administrateur) */}
+        {currentUser?.role === 'ADMIN' && currentTenant && (
+          <div className="p-6 bg-dark-900 border border-dark-700 rounded-3xl shadow-xl flex flex-col gap-6 mt-4">
+            <div className="flex items-center gap-3 text-blue-400 border-b border-dark-700 pb-4">
+              <QrCode size={24} />
+              <h3 className="text-lg font-bold text-white">Paramètres de Paiement (Mobile Money)</h3>
+            </div>
+            
+            <div className="flex flex-col md:flex-row gap-6 items-start">
+              <div className="flex-1 space-y-4">
+                <p className="text-sm text-gray-400">
+                  Ajoutez ici le QR Code de votre compte marchand (Wave, Orange, MTN). Il s'affichera automatiquement sur l'écran de caisse lorsque vous choisirez le paiement Mobile Money.
+                </p>
+                <div>
+                  <label className="flex items-center justify-center gap-2 px-4 py-3 bg-dark-800 hover:bg-dark-700 border border-dark-600 rounded-xl cursor-pointer transition-colors text-sm font-bold w-fit text-white">
+                    <Upload size={18} />
+                    Importer une image (Max 2 Mo)
+                    <input type="file" accept="image/*" onChange={handleQrUpload} className="hidden" />
+                  </label>
+                </div>
+              </div>
+              <div className="shrink-0">
+                {currentTenant.mobileMoneyQrCode ? (
+                  <div className="relative">
+                    <img src={currentTenant.mobileMoneyQrCode} alt="QR Code Paiement" className="w-32 h-32 rounded-xl object-contain bg-white p-2 border border-dark-600" />
+                    <button 
+                      onClick={() => {
+                        updateTenantQrCode(currentTenant.id, '');
+                        showNotification('success', 'QR Code supprimé.');
+                      }}
+                      className="absolute -top-2 -right-2 p-1.5 bg-red-500 hover:bg-red-600 text-white rounded-full shadow-lg transition-colors"
+                      title="Supprimer"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="w-32 h-32 rounded-xl bg-dark-800 border-2 border-dashed border-dark-600 flex items-center justify-center text-gray-500">
+                    <QrCode size={40} className="opacity-50" />
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Section Gestion de l'Établissement & Abonnement (Seulement pour l'Administrateur) */}
         {currentUser?.role === 'ADMIN' && currentTenant && (
