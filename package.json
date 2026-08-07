@@ -16,6 +16,8 @@
     "@prisma/client": "^7.9.1",
     "@tailwindcss/postcss": "^4.3.3",
     "better-sqlite3": "^13.0.3",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
     "lucide-react": "^1.28.0",
     "pg": "^8.22.0",
     "prisma": "^7.9.1",

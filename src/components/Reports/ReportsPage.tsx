@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { 
   BarChart3, 
   TrendingUp, 
@@ -7,7 +9,8 @@ import {
   Banknote, 
   CreditCard, 
   Smartphone, 
-  Clock
+  Clock,
+  Printer
 } from 'lucide-react';
 import { usePOSStore } from '../../store';
 
@@ -121,6 +124,73 @@ export const ReportsPage: React.FC = () => {
     { name: 'Catalogue Articles', value: products.length.toString(), label: 'Articles actifs', icon: <Users className="text-purple-400" size={24} /> },
   ];
 
+  const exportToPDF = () => {
+    const doc = new jsPDF('landscape');
+    const tenantName = usePOSStore.getState().currentTenant?.establishmentName || 'Établissement';
+    
+    // Titre
+    doc.setFontSize(20);
+    doc.text(`Rapport de Performance - ${tenantName}`, 14, 22);
+    
+    // Période & Vendeur
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    const periodText = period === 'CUSTOM' ? `Du ${startDate} au ${endDate}` : `Période: ${period}`;
+    let sellerText = 'Tous les vendeurs';
+    if (sellerId !== 'ALL') {
+      const seller = users.find(u => u.id === sellerId);
+      if (seller) sellerText = `Vendeur: ${seller.name}`;
+    }
+    doc.text(`${periodText} | ${sellerText}`, 14, 30);
+
+    // Résumé
+    autoTable(doc, {
+      startY: 40,
+      head: [['Chiffre d\'Affaires', 'Total Ventes', 'Panier Moyen', 'Méthodes de Paiement']],
+      body: [[
+        `${totalCA.toLocaleString('fr-FR')} F CFA`,
+        salesCount.toString(),
+        `${averageBasket.toLocaleString('fr-FR')} F CFA`,
+        `Espèces: ${paymentMethods.CASH.amount.toLocaleString('fr-FR')} | Carte: ${paymentMethods.CARD.amount.toLocaleString('fr-FR')} | Mobile: ${paymentMethods.MOBILE.amount.toLocaleString('fr-FR')}`
+      ]],
+      theme: 'grid',
+      headStyles: { fillColor: [41, 128, 185] },
+    });
+
+    // Top Ventes
+    doc.text('Articles les plus vendus', 14, (doc as any).lastAutoTable.finalY + 15);
+    autoTable(doc, {
+      startY: (doc as any).lastAutoTable.finalY + 20,
+      head: [['Article', 'Quantité', 'Chiffre d\'Affaires']],
+      body: sortedTopSelling.slice(0, 15).map(item => [
+        item.name,
+        item.qty.toString(),
+        item.sales
+      ]),
+      theme: 'striped',
+      headStyles: { fillColor: [39, 174, 96] },
+    });
+
+    // Détail des transactions
+    doc.text('Détail des Transactions', 14, (doc as any).lastAutoTable.finalY + 15);
+    autoTable(doc, {
+      startY: (doc as any).lastAutoTable.finalY + 20,
+      head: [['Date', 'Vendeur', 'Méthode', 'Articles', 'Total']],
+      body: filteredSales.map(sale => [
+        sale.createdAt,
+        sale.sellerName,
+        sale.paymentMethod,
+        sale.items.map(i => `${i.quantity}x ${i.product.name}`).join(', '),
+        `${sale.total.toLocaleString('fr-FR')} F CFA`
+      ]),
+      theme: 'grid',
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [142, 68, 173] },
+    });
+
+    doc.save(`Rapport_${tenantName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0,10)}.pdf`);
+  };
+
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-dark-900 text-white">
       <div className="max-w-6xl mx-auto flex flex-col gap-8 pb-20">
@@ -133,6 +203,13 @@ export const ReportsPage: React.FC = () => {
             </h2>
             <p className="text-gray-400 mt-1">Pilotez votre établissement avec des statistiques détaillées</p>
           </div>
+          <button
+            onClick={exportToPDF}
+            className="px-6 py-3 bg-primary hover:bg-primary/90 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-primary/20"
+          >
+            <Printer size={20} />
+            Imprimer PDF
+          </button>
         </div>
 
         {/* Filters Panel */}
