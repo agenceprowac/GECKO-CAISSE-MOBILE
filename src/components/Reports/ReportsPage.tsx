@@ -161,12 +161,16 @@ export const ReportsPage: React.FC = () => {
     doc.text('Articles les plus vendus', 14, (doc as any).lastAutoTable.finalY + 15);
     autoTable(doc, {
       startY: (doc as any).lastAutoTable.finalY + 20,
-      head: [['Article', 'Quantité', 'Chiffre d\'Affaires']],
-      body: sortedTopSelling.slice(0, 15).map(item => [
-        item.name,
-        item.qty.toString(),
-        item.sales
-      ]),
+      head: [['Article', 'Quantité Vendue', 'Quantité Restante (Stock)', 'Chiffre d\'Affaires']],
+      body: sortedTopSelling.slice(0, 15).map(item => {
+        const product = products.find(p => p.name === item.name);
+        return [
+          item.name,
+          item.qty.toString(),
+          product ? product.stock.toString() : 'N/A',
+          item.sales
+        ];
+      }),
       theme: 'striped',
       headStyles: { fillColor: [39, 174, 96] },
     });
