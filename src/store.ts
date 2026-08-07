@@ -207,6 +207,8 @@ export const usePOSStore = create<POSState>((set, get) => {
 
     syncCloudData: async (tenantIdOverride) => {
       const state = get();
+      if (state.isSyncing) return; // Empêche les exécutions parallèles qui causent des écrasements
+
       const tenantId = tenantIdOverride || state.currentTenant?.id;
       if (!tenantId) return;
 
@@ -256,10 +258,13 @@ export const usePOSStore = create<POSState>((set, get) => {
 
         const data = await response.json();
 
+        // RELIRE L'ÉTAT LE PLUS FRAIS APRÈS L'APPEL RÉSEAU (Évite d'écraser des ventes faites pendant le fetch)
+        const currentState = get();
+
         // Mettre à jour l'état local avec les données issues du Cloud
         // 1. Fusionner les ventes (en marquant celles qui viennent d'être synchronisées)
         const syncedSaleIds = new Set(unsyncedSales.map(s => s.id));
-        const updatedLocalSales = state.sales.map(s => 
+        const updatedLocalSales = currentState.sales.map(s => 
           syncedSaleIds.has(s.id) ? { ...s, synced: true } : s
         );
 
@@ -271,16 +276,16 @@ export const usePOSStore = create<POSState>((set, get) => {
         ];
 
         // 2. Remplacer/Fusionner les listes de produits, tables, utilisateurs, historique de stock
-        const otherTenantsProducts = state.products.filter(p => p.tenantId !== tenantId);
+        const otherTenantsProducts = currentState.products.filter(p => p.tenantId !== tenantId);
         const finalProducts = [...otherTenantsProducts, ...data.products];
 
-        const otherTenantsTables = state.tables.filter(t => t.tenantId !== tenantId);
+        const otherTenantsTables = currentState.tables.filter(t => t.tenantId !== tenantId);
         const finalTables = [...otherTenantsTables, ...data.tables];
 
-        const otherTenantsUsers = state.users.filter(u => u.tenantId !== tenantId);
+        const otherTenantsUsers = currentState.users.filter(u => u.tenantId !== tenantId);
         const finalUsers = [...otherTenantsUsers, ...data.users];
 
-        const otherTenantsStockHistory = state.stockHistory.filter(h => h.tenantId !== tenantId);
+        const otherTenantsStockHistory = currentState.stockHistory.filter(h => h.tenantId !== tenantId);
         const finalStockHistory = [...otherTenantsStockHistory, ...data.stockHistory];
 
         set({
@@ -290,9 +295,9 @@ export const usePOSStore = create<POSState>((set, get) => {
           stockHistory: finalStockHistory,
           sales: finalSales,
           isSyncing: false,
-          hasUnsyncedProductsChanges: state.hasUnsyncedProductsChanges && !sentProductsChanges,
-          hasUnsyncedTablesChanges: state.hasUnsyncedTablesChanges && !sentTablesChanges,
-          hasUnsyncedUsersChanges: state.hasUnsyncedUsersChanges && !sentUsersChanges
+          hasUnsyncedProductsChanges: currentState.hasUnsyncedProductsChanges && !sentProductsChanges,
+          hasUnsyncedTablesChanges: currentState.hasUnsyncedTablesChanges && !sentTablesChanges,
+          hasUnsyncedUsersChanges: currentState.hasUnsyncedUsersChanges && !sentUsersChanges
         });
 
         // Mettre à jour le tenant actuel s'il a changé (ex: son plan ou statut modifié par le Super-Admin)
