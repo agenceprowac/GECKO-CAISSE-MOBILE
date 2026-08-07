@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { usePOSStore } from '../../store';
-import { X, Banknote, CreditCard, Smartphone, QrCode } from 'lucide-react';
+import { X, Banknote, CreditCard, Smartphone } from 'lucide-react';
 
 interface PaymentModalProps {
   onClose: () => void;
 }
 
 export const PaymentModal: React.FC<PaymentModalProps> = ({ onClose }) => {
-  const { total, clearCart, cart, updateStock, showNotification, addSale, currentUser, currentTenant } = usePOSStore();
+  const { total, clearCart, cart, updateStock, showNotification, addSale, currentUser } = usePOSStore();
   const [amountGiven, setAmountGiven] = useState<string>('');
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CARD' | 'MOBILE'>('CASH');
 
