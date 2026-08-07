@@ -11,8 +11,18 @@ export const ProfilePage: React.FC = () => {
   const getSalesByTenant = usePOSStore(state => state.getSalesByTenant);
   const sales = getSalesByTenant();
 
-  // Filtrer les ventes du vendeur actuel
-  const mySales = sales.filter(sale => sale.sellerId === currentUser?.id);
+  // Obtenir les limites de la journée en cours
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+  const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+  // Filtrer les ventes du vendeur actuel POUR LA JOURNÉE EN COURS uniquement
+  const mySales = sales.filter(sale => {
+    if (sale.sellerId !== currentUser?.id) return false;
+    if (!sale.rawDate) return false;
+    const saleDate = new Date(sale.rawDate);
+    return saleDate >= startOfToday && saleDate <= endOfToday;
+  });
 
   // Calculs statistiques
   const totalSalesAmount = mySales.reduce((sum, sale) => sum + sale.total, 0);
