@@ -21,6 +21,11 @@ export const ReportsPage: React.FC = () => {
   const users = getUsersByTenant();
   const sales = getSalesByTenant();
 
+  // Utilitaire pour formater les prix avec un point comme séparateur de milliers
+  const formatPrice = (amount: number) => {
+    return amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  };
+
   // Filter States
   const [period, setPeriod] = useState<'TODAY' | 'WEEK' | 'MONTH' | 'CUSTOM'>('TODAY');
   const [startDate, setStartDate] = useState<string>('');
@@ -93,7 +98,7 @@ export const ReportsPage: React.FC = () => {
       name,
       qty: data.qty,
       salesVal: data.salesVal,
-      sales: `${data.salesVal.toLocaleString('fr-FR')} F CFA`
+      sales: `${formatPrice(data.salesVal)} F CFA`
     }))
     .sort((a, b) => b.qty - a.qty);
 
@@ -118,9 +123,9 @@ export const ReportsPage: React.FC = () => {
 
   // Stats cards configuration
   const stats = [
-    { name: 'Chiffre d\'Affaires', value: `${totalCA.toLocaleString('fr-FR')} F CFA`, label: 'Total période', icon: <TrendingUp className="text-green-400" size={24} /> },
+    { name: 'Chiffre d\'Affaires', value: `${formatPrice(totalCA)} F CFA`, label: 'Total période', icon: <TrendingUp className="text-green-400" size={24} /> },
     { name: 'Total Ventes', value: salesCount.toString(), label: 'Transactions', icon: <ShoppingBag className="text-blue-400" size={24} /> },
-    { name: 'Panier Moyen', value: `${averageBasket.toLocaleString('fr-FR')} F CFA`, label: 'Par commande', icon: <BarChart3 className="text-amber-400" size={24} /> },
+    { name: 'Panier Moyen', value: `${formatPrice(averageBasket)} F CFA`, label: 'Par commande', icon: <BarChart3 className="text-amber-400" size={24} /> },
     { name: 'Catalogue Articles', value: products.length.toString(), label: 'Articles actifs', icon: <Users className="text-purple-400" size={24} /> },
   ];
 
@@ -148,10 +153,10 @@ export const ReportsPage: React.FC = () => {
       startY: 40,
       head: [['Chiffre d\'Affaires', 'Total Ventes', 'Panier Moyen', 'Méthodes de Paiement']],
       body: [[
-        `${totalCA.toLocaleString('fr-FR')} F CFA`,
+        `${formatPrice(totalCA)} F CFA`,
         salesCount.toString(),
-        `${averageBasket.toLocaleString('fr-FR')} F CFA`,
-        `Espèces: ${paymentMethods.CASH.amount.toLocaleString('fr-FR')} | Carte: ${paymentMethods.CARD.amount.toLocaleString('fr-FR')} | Mobile: ${paymentMethods.MOBILE.amount.toLocaleString('fr-FR')}`
+        `${formatPrice(averageBasket)} F CFA`,
+        `Espèces: ${formatPrice(paymentMethods.CASH.amount)} | Carte: ${formatPrice(paymentMethods.CARD.amount)} | Mobile: ${formatPrice(paymentMethods.MOBILE.amount)}`
       ]],
       theme: 'grid',
       headStyles: { fillColor: [41, 128, 185] },
@@ -161,11 +166,12 @@ export const ReportsPage: React.FC = () => {
     doc.text('Articles les plus vendus', 14, (doc as any).lastAutoTable.finalY + 15);
     autoTable(doc, {
       startY: (doc as any).lastAutoTable.finalY + 20,
-      head: [['Article', 'Quantité Vendue', 'Quantité Restante (Stock)', 'Chiffre d\'Affaires']],
+      head: [['Article', 'Prix Unitaire', 'Quantité Vendue', 'Quantité Restante (Stock)', 'Chiffre d\'Affaires']],
       body: sortedTopSelling.slice(0, 15).map(item => {
         const product = products.find(p => p.name === item.name);
         return [
           item.name,
+          product ? `${formatPrice(product.price)} F CFA` : 'N/A',
           item.qty.toString(),
           product ? product.stock.toString() : 'N/A',
           item.sales
@@ -185,7 +191,7 @@ export const ReportsPage: React.FC = () => {
         sale.sellerName,
         sale.paymentMethod,
         sale.items.map(i => `${i.quantity}x ${i.product.name}`).join(', '),
-        `${sale.total.toLocaleString('fr-FR')} F CFA`
+        `${formatPrice(sale.total)} F CFA`
       ]),
       theme: 'grid',
       styles: { fontSize: 8 },
