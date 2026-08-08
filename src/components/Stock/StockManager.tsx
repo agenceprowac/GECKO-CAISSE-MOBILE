@@ -245,7 +245,7 @@ export const StockManager: React.FC<StockManagerProps> = ({ onClose }) => {
               </div>
             ) : (
               <div className="flex flex-col gap-3">
-                {[...filteredHistory].reverse().map(entry => (
+                {filteredHistory.map(entry => (
                   <div 
                     key={entry.id} 
                     className="p-4 bg-dark-900 border border-dark-700 rounded-2xl flex items-center justify-between gap-4 text-xs shadow-md"
