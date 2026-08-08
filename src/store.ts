@@ -275,18 +275,32 @@ export const usePOSStore = create<POSState>((set, get) => {
           ...data.sales.filter((s: any) => !localSaleIds.has(s.id))
         ];
 
-        // 2. Remplacer/Fusionner les listes de produits, tables, utilisateurs, historique de stock
+        // 2. Fusionner l'historique de stock (Append-only : on garde tout le local, on ajoute le serveur manquant)
+        const localHistoryIds = new Set(currentState.stockHistory.map(h => h.id));
+        const missingServerHistory = data.stockHistory.filter((h: any) => !localHistoryIds.has(h.id));
+        const finalStockHistory = [...currentState.stockHistory, ...missingServerHistory];
+
+        // 3. Fusionner les Produits, Tables et Utilisateurs
         const otherTenantsProducts = currentState.products.filter(p => p.tenantId !== tenantId);
-        const finalProducts = [...otherTenantsProducts, ...data.products];
+        const localProductIds = new Set(currentState.products.filter(p => p.tenantId === tenantId).map(p => p.id));
+        const missingServerProducts = data.products.filter((p: any) => !localProductIds.has(p.id));
+        const finalProducts = currentState.hasUnsyncedProductsChanges 
+          ? [...currentState.products, ...missingServerProducts] 
+          : [...otherTenantsProducts, ...data.products];
 
         const otherTenantsTables = currentState.tables.filter(t => t.tenantId !== tenantId);
-        const finalTables = [...otherTenantsTables, ...data.tables];
+        const localTableIds = new Set(currentState.tables.filter(t => t.tenantId === tenantId).map(t => t.id));
+        const missingServerTables = data.tables.filter((t: any) => !localTableIds.has(t.id));
+        const finalTables = currentState.hasUnsyncedTablesChanges
+          ? [...currentState.tables, ...missingServerTables]
+          : [...otherTenantsTables, ...data.tables];
 
         const otherTenantsUsers = currentState.users.filter(u => u.tenantId !== tenantId);
-        const finalUsers = [...otherTenantsUsers, ...data.users];
-
-        const otherTenantsStockHistory = currentState.stockHistory.filter(h => h.tenantId !== tenantId);
-        const finalStockHistory = [...otherTenantsStockHistory, ...data.stockHistory];
+        const localUserIds = new Set(currentState.users.filter(u => u.tenantId === tenantId).map(u => u.id));
+        const missingServerUsers = data.users.filter((u: any) => !localUserIds.has(u.id));
+        const finalUsers = currentState.hasUnsyncedUsersChanges
+          ? [...currentState.users, ...missingServerUsers]
+          : [...otherTenantsUsers, ...data.users];
 
         set({
           products: finalProducts,
@@ -856,6 +870,11 @@ export const usePOSStore = create<POSState>((set, get) => {
     // Cart actions
     addToCart: (product) => set((state) => {
       const existingItem = state.cart.find(item => item.product.id === product.id);
+      
+      // Empêcher d'ajouter plus que le stock disponible
+      if (existingItem && existingItem.quantity >= product.stock) return state;
+      if (!existingItem && product.stock <= 0) return state;
+
       let newCart;
       if (existingItem) {
         newCart = state.cart.map(item =>
@@ -882,6 +901,12 @@ export const usePOSStore = create<POSState>((set, get) => {
         const newTotal = newCart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
         return { cart: newCart, total: newTotal };
       }
+
+      const itemToUpdate = state.cart.find(item => item.id === itemId);
+      if (itemToUpdate && quantity > itemToUpdate.product.stock) {
+        return state; // Empêcher de dépasser le stock
+      }
+
       const newCart = state.cart.map(item =>
         item.id === itemId ? { ...item, quantity } : item
       );

@@ -395,7 +395,9 @@ export const ReportsPage: React.FC = () => {
             <p className="text-gray-500 text-center py-10">Aucune vente ne correspond aux filtres de recherche.</p>
           ) : (
             <div className="flex flex-col gap-3 max-h-[350px] overflow-y-auto pr-2">
-              {filteredSales.map(sale => (
+              {filteredSales
+                .sort((a, b) => new Date(b.rawDate).getTime() - new Date(a.rawDate).getTime())
+                .map(sale => (
                 <div key={sale.id} className="p-4 bg-dark-900 rounded-2xl border border-dark-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
                   <div>
                     <div className="flex items-center gap-2">
