@@ -10,7 +10,7 @@ import { ReportsPage } from '../Reports/ReportsPage';
 import { TablesPage } from '../Tables/TablesPage';
 import { UsersPage } from '../Users/UsersPage';
 import { ProfilePage } from '../Users/ProfilePage';
-import { Menu, Search, Users, X, Wifi, WifiOff, RefreshCw, PackagePlus, Tag } from 'lucide-react';
+import { Menu, Users, X, Wifi, WifiOff, RefreshCw, PackagePlus, Tag } from 'lucide-react';
 import { usePOSStore } from '../../store';
 
 export const POSLayout: React.FC = () => {
