@@ -178,7 +178,9 @@ export const POSLayout: React.FC = () => {
       {/* Mobile Cart Toggle Button (Only show on POS view) */}
       {currentView === 'pos' && (
         <button 
-          className="md:hidden fixed bottom-6 right-6 w-16 h-16 bg-primary rounded-full shadow-lg shadow-primary/30 flex items-center justify-center text-white z-20"
+          className={`md:hidden fixed bottom-6 right-6 w-16 h-16 rounded-full shadow-lg flex items-center justify-center text-white z-20 transition-colors ${
+            showCartMobile ? 'bg-red-500 shadow-red-500/30' : 'bg-primary shadow-primary/30'
+          }`}
           onClick={() => setShowCartMobile(!showCartMobile)}
         >
           <div className="relative">
