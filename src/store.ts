@@ -722,7 +722,8 @@ export const usePOSStore = create<POSState>((set, get) => {
         quantityAdded: quantityToAdd,
         userLabel: get().currentUser?.name || 'Administrateur',
         createdAt: formattedDate,
-        tenantId: product.tenantId
+        tenantId: product.tenantId,
+        rawDate: now.toISOString()
       };
 
       const updatedHistory = [newHistoryEntry, ...get().stockHistory];

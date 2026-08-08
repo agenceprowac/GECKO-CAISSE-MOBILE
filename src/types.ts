@@ -71,4 +71,5 @@ export type StockHistoryEntry = {
   userLabel: string;
   createdAt: string; // "DD/MM/YYYY à HH:mm"
   tenantId?: string;
+  rawDate?: string; // ISO String pour le tri et le filtrage
 };

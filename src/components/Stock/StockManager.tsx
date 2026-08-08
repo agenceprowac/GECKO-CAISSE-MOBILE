@@ -18,11 +18,49 @@ export const StockManager: React.FC<StockManagerProps> = ({ onClose }) => {
 
   const [activeTab, setActiveTab] = useState<'INVENTORY' | 'HISTORY'>('INVENTORY');
   const [search, setSearch] = useState('');
+  const [period, setPeriod] = useState<'TODAY' | 'WEEK' | 'MONTH' | 'ALL'>('TODAY');
   
   // Dictionnaire pour gérer la quantité saisie manuellement pour chaque produit
   const [manualInputs, setManualInputs] = useState<{ [productId: string]: string }>({});
 
   const filteredProducts = products.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
+
+  // Parser la date d'un mouvement
+  const parseEntryDate = (entry: any) => {
+    if (entry.rawDate) return new Date(entry.rawDate);
+    // Fallback pour les anciennes entrées : "Le 08/08/2026 à 14:30:00"
+    const parts = entry.createdAt.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+    if (parts) {
+      return new Date(`${parts[3]}-${parts[2]}-${parts[1]}T00:00:00`);
+    }
+    return new Date();
+  };
+
+  const filteredHistory = stockHistory.filter(entry => {
+    if (period === 'ALL') return true;
+    
+    const entryDate = parseEntryDate(entry);
+    const now = new Date();
+    
+    if (period === 'TODAY') {
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      return entryDate >= startOfToday;
+    }
+    
+    if (period === 'WEEK') {
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - now.getDay());
+      startOfWeek.setHours(0, 0, 0, 0);
+      return entryDate >= startOfWeek;
+    }
+    
+    if (period === 'MONTH') {
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      return entryDate >= startOfMonth;
+    }
+    
+    return true;
+  });
 
   const handleStockAdjust = (productId: string, quantity: number) => {
     updateStock(productId, quantity);
@@ -181,8 +219,23 @@ export const StockManager: React.FC<StockManagerProps> = ({ onClose }) => {
           </>
         ) : (
           /* TAB 2: INVENTORY HISTORY LOG */
-          <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
-            {stockHistory.length === 0 ? (
+          <>
+            {/* Filter */}
+            <div className="p-4 border-b border-dark-700 bg-dark-900 shrink-0">
+              <select
+                value={period}
+                onChange={(e) => setPeriod(e.target.value as any)}
+                className="w-full px-4 py-3 bg-dark-800 border border-dark-700 rounded-xl focus:outline-none focus:border-primary transition-colors text-white font-medium"
+              >
+                <option value="TODAY">Aujourd'hui</option>
+                <option value="WEEK">Cette Semaine</option>
+                <option value="MONTH">Ce Mois</option>
+                <option value="ALL">Tout l'historique</option>
+              </select>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
+              {filteredHistory.length === 0 ? (
               <div className="text-center text-gray-500 py-12 flex-1 flex flex-col items-center justify-center gap-2">
                 <ListFilter size={40} className="text-gray-600" />
                 <p className="font-semibold text-sm">Aucun mouvement de stock enregistré.</p>
@@ -192,7 +245,7 @@ export const StockManager: React.FC<StockManagerProps> = ({ onClose }) => {
               </div>
             ) : (
               <div className="flex flex-col gap-3">
-                {stockHistory.map(entry => (
+                {[...filteredHistory].reverse().map(entry => (
                   <div 
                     key={entry.id} 
                     className="p-4 bg-dark-900 border border-dark-700 rounded-2xl flex items-center justify-between gap-4 text-xs shadow-md"
@@ -217,8 +270,9 @@ export const StockManager: React.FC<StockManagerProps> = ({ onClose }) => {
               </div>
             )}
           </div>
-        )}
-      </div>
+        </>
+      )}
     </div>
+  </div>
   );
 };
