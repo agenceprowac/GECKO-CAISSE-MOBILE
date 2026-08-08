@@ -19,11 +19,14 @@ export const ProductGrid: React.FC = () => {
   const products = getProductsByTenant();
 
   const filteredProducts = useMemo(() => {
+    let result = [];
     if (searchQuery.trim() !== '') {
       const lowerQuery = searchQuery.toLowerCase();
-      return products.filter(p => p.name.toLowerCase().includes(lowerQuery));
+      result = products.filter(p => p.name.toLowerCase().includes(lowerQuery));
+    } else {
+      result = products.filter(p => p.categoryId === activeCategory);
     }
-    return products.filter(p => p.categoryId === activeCategory);
+    return result.sort((a, b) => a.name.localeCompare(b.name));
   }, [products, activeCategory, searchQuery]);
 
   return (
