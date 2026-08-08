@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 
 import { usePOSStore } from '../../store';
 import { mockCategories } from '../../data/mockData';
-import { Beer, Martini, Wine, CupSoda, Pizza } from 'lucide-react';
+import { Beer, Martini, Wine, CupSoda, Pizza, Search, X } from 'lucide-react';
 
 const iconMap: Record<string, React.ReactNode> = {
   Beer: <Beer size={24} />,
@@ -14,13 +14,41 @@ const iconMap: Record<string, React.ReactNode> = {
 
 export const ProductGrid: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState<string>(mockCategories[0].id);
+  const [searchQuery, setSearchQuery] = useState('');
   const { addToCart, getProductsByTenant } = usePOSStore();
   const products = getProductsByTenant();
 
-  const filteredProducts = products.filter(p => p.categoryId === activeCategory);
+  const filteredProducts = useMemo(() => {
+    if (searchQuery.trim() !== '') {
+      const lowerQuery = searchQuery.toLowerCase();
+      return products.filter(p => p.name.toLowerCase().includes(lowerQuery));
+    }
+    return products.filter(p => p.categoryId === activeCategory);
+  }, [products, activeCategory, searchQuery]);
 
   return (
     <div className="flex flex-col h-full bg-dark-900 overflow-hidden">
+      {/* Search Bar */}
+      <div className="p-4 bg-dark-800 border-b border-dark-700 shrink-0">
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+          <input
+            type="text"
+            placeholder="Rechercher un produit (local)..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-dark-900 text-white pl-12 pr-10 py-3 rounded-xl border border-dark-700 focus:outline-none focus:border-primary transition-colors"
+          />
+          {searchQuery && (
+            <button 
+              onClick={() => setSearchQuery('')}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+            >
+              <X size={18} />
+            </button>
+          )}
+        </div>
+      </div>
       {/* Categories Bar */}
       <div className="flex gap-2 p-4 overflow-x-auto no-scrollbar shrink-0 bg-dark-800 border-b border-dark-700">
         {mockCategories.map(cat => (

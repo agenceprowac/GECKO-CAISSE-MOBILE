@@ -147,15 +147,6 @@ export const POSLayout: React.FC = () => {
         <div className="flex items-center gap-4">
           {currentView === 'pos' && (
             <>
-              <div className="relative hidden md:block">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                <input 
-                  type="text" 
-                  placeholder="Rechercher..." 
-                  className="pl-10 pr-4 py-2 bg-dark-900 border border-dark-700 rounded-xl focus:outline-none focus:border-primary w-64 transition-colors"
-                />
-              </div>
-              
               <button 
                 onClick={() => setShowTableSelector(true)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-colors ${
