@@ -246,7 +246,7 @@ export const StockManager: React.FC<StockManagerProps> = ({ onClose }) => {
             ) : (
               <div className="flex flex-col gap-3">
                 {filteredHistory
-                  .sort((a, b) => new Date(b.rawDate).getTime() - new Date(a.rawDate).getTime())
+                  .sort((a, b) => new Date(b.rawDate || 0).getTime() - new Date(a.rawDate || 0).getTime())
                   .map(entry => (
                   <div 
                     key={entry.id} 
