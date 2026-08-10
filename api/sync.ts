@@ -20,7 +20,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Méthode non autorisée.' });
   }
 
-  const { tenantId, localSales, localProducts, localTables, localUsers, localStockHistory } = req.body;
+  const { tenantId, localSales, localProducts, localTables, localUsers, localStockHistory, localCategories } = req.body;
 
   if (!tenantId) {
     return res.status(400).json({ error: 'ID de l\'établissement requis pour la synchronisation.' });
@@ -47,28 +47,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // 1. Enregistrer ou mettre à jour les produits locaux s'il y a lieu (uniquement si envoyé par le client)
-    if (localProducts !== undefined && Array.isArray(localProducts)) {
-      // La suppression brute (deleteMany) est retirée car si le produit a déjà été vendu (SaleItem), 
-      // SQLite lancera une erreur de contrainte de clé étrangère (FOREIGN KEY constraint failed) 
-      // et fera planter toute la synchronisation.
-      // Dans une version plus avancée, on utilisera un soft-delete (isAvailable: false).
-
-      for (const prod of localProducts) {
-        // Enregistrer la catégorie de démo si elle n'existe pas en base
-        let categoryId = prod.categoryId;
-        if (categoryId) {
-          const categoryExists = await prisma.category.findUnique({ where: { id: categoryId } });
-          if (!categoryExists) {
-            await prisma.category.create({
-              data: {
-                id: categoryId,
-                name: 'Boissons',
-                tenantId: tenantId
-              }
-            });
+    // 0. Synchroniser les catégories locales (uniquement si envoyées par le client)
+    if (localCategories !== undefined && Array.isArray(localCategories)) {
+      for (const cat of localCategories) {
+        if (!cat.tenantId) continue;
+        
+        await prisma.category.upsert({
+          where: { id: cat.id },
+          update: {
+            name: cat.name,
+            color: cat.color,
+            icon: cat.icon
+          },
+          create: {
+            id: cat.id,
+            tenantId: cat.tenantId,
+            name: cat.name,
+            color: cat.color,
+            icon: cat.icon
           }
-        }
+        });
+      }
+    }
+
+    // 1. Enregistrer ou mettre à jour les produits locaux s'il y a lieu
+    if (localProducts !== undefined && Array.isArray(localProducts)) {
+      for (const prod of localProducts) {
+        let categoryId = prod.categoryId;
 
         await prisma.product.upsert({
           where: { id: prod.id },
@@ -203,6 +208,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       where: { id: tenantId }
     });
 
+    const categories = await prisma.category.findMany({
+      where: { tenantId }
+    });
+
     const products = await prisma.product.findMany({
       where: { tenantId }
     });
@@ -262,6 +271,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(200).json({
       tenant: dbTenant,
+      categories,
       products,
       tables,
       users,

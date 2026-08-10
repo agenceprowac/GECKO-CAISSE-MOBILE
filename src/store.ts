@@ -35,6 +35,12 @@ interface POSState {
   hasUnsyncedTablesChanges: boolean;
   hasUnsyncedUsersChanges: boolean;
 
+  // Categories
+  categories: Category[];
+  getCategoriesByTenant: () => Category[];
+  addCategory: (category: Omit<Category, 'id'>) => void;
+  deleteCategory: (categoryId: string) => void;
+
   // Products & Inventory History
   products: Product[];
   getProductsByTenant: (includeInactive?: boolean) => Product[];
@@ -133,6 +139,7 @@ const loadPersistedData = () => {
         role: 'SUPER_ADMIN'
       }
     ],
+    categories: [],
     sales: [],
     stockHistory: [],
     hasEnteredApp: false,
@@ -159,6 +166,7 @@ export const usePOSStore = create<POSState>((set, get) => {
       hasUnsyncedProductsChanges: updates.hasUnsyncedProductsChanges !== undefined ? updates.hasUnsyncedProductsChanges : state.hasUnsyncedProductsChanges,
       hasUnsyncedTablesChanges: updates.hasUnsyncedTablesChanges !== undefined ? updates.hasUnsyncedTablesChanges : state.hasUnsyncedTablesChanges,
       hasUnsyncedUsersChanges: updates.hasUnsyncedUsersChanges !== undefined ? updates.hasUnsyncedUsersChanges : state.hasUnsyncedUsersChanges,
+      categories: updates.categories !== undefined ? updates.categories : state.categories,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
   };
@@ -166,6 +174,7 @@ export const usePOSStore = create<POSState>((set, get) => {
   return {
     tenants: persistedData.tenants,
     currentTenant: persistedData.currentTenant,
+    categories: persistedData.categories?.length > 0 ? persistedData.categories : mockCategories,
     products: persistedData.products,
     tables: persistedData.tables,
     users: persistedData.users,
@@ -248,6 +257,7 @@ export const usePOSStore = create<POSState>((set, get) => {
             localProducts: sentProductsChanges ? tenantProducts : undefined,
             localTables: sentTablesChanges ? tenantTables : undefined,
             localUsers: sentUsersChanges ? tenantUsers : undefined,
+            localCategories: get().categories.filter(c => c.tenantId === tenantId),
             localStockHistory: tenantStockHistory
           })
         });
@@ -302,10 +312,18 @@ export const usePOSStore = create<POSState>((set, get) => {
           ? [...currentState.users, ...missingServerUsers]
           : [...otherTenantsUsers, ...data.users];
 
+        // 4. Fusionner les Catégories
+        // Les catégories mock n'ont pas de tenantId, on les conserve.
+        const otherCategories = currentState.categories.filter(c => c.tenantId !== tenantId);
+        // On remplace celles du tenant par celles du serveur (le serveur est source de vérité si pas de "hasUnsyncedCategoriesChanges" que je n'ai pas implémenté)
+        // Simplification : on prend les données du serveur pour ce tenant, et on garde celles d'autres tenants + globales.
+        const finalCategories = [...otherCategories, ...(data.categories || [])];
+
         set({
           products: finalProducts,
           tables: finalTables,
           users: finalUsers,
+          categories: finalCategories,
           stockHistory: finalStockHistory,
           sales: finalSales,
           isSyncing: false,
@@ -329,6 +347,7 @@ export const usePOSStore = create<POSState>((set, get) => {
           products: finalProducts,
           tables: finalTables,
           users: finalUsers,
+          categories: finalCategories,
           stockHistory: finalStockHistory,
           sales: finalSales,
           tenants: data.allTenants && data.allTenants.length > 0 ? data.allTenants : state.tenants
@@ -688,7 +707,30 @@ export const usePOSStore = create<POSState>((set, get) => {
       }
     },
 
+    // Categories actions
+    addCategory: (category) => {
+      const tenantId = get().currentTenant?.id;
+      const updatedCategories = [...get().categories, { ...category, id: 'cat_' + crypto.randomUUID(), tenantId }];
+      set({ categories: updatedCategories }); // Sync plus tard
+      persist({ categories: updatedCategories });
+      get().syncCloudData().catch(console.error);
+    },
+
+    deleteCategory: (categoryId) => {
+      const updatedCategories = get().categories.filter(c => c.id !== categoryId);
+      set({ categories: updatedCategories });
+      persist({ categories: updatedCategories });
+      get().syncCloudData().catch(console.error);
+    },
+
     // Getters filtered by active tenant
+    getCategoriesByTenant: () => {
+      const state = get();
+      const tenantId = state.currentTenant?.id;
+      // Retourne les catégories du tenant + celles par défaut (mock) qui n'ont pas de tenantId (globales)
+      return state.categories.filter(c => c.tenantId === tenantId || !c.tenantId);
+    },
+
     getProductsByTenant: (includeInactive = false) => {
       const state = get();
       const all = state.products.filter(p => p.tenantId === state.currentTenant?.id);

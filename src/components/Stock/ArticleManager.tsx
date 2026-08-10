@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { X, Plus, Check, Edit2, Trash2, Tag } from 'lucide-react';
 import { usePOSStore } from '../../store';
-import { mockCategories } from '../../data/mockData';
 import type { Product } from '../../types';
 
 interface ArticleManagerProps {
@@ -9,11 +8,14 @@ interface ArticleManagerProps {
 }
 
 export const ArticleManager: React.FC<ArticleManagerProps> = ({ onClose }) => {
-  const { currentTenant, products: allProducts, addProduct, updateProduct, deleteProduct, showNotification } = usePOSStore();
+  const { currentTenant, products: allProducts, categories: allCategories, addProduct, updateProduct, deleteProduct, addCategory, deleteCategory, showNotification } = usePOSStore();
   const products = allProducts.filter(p => p.tenantId === currentTenant?.id);
+  const categories = allCategories.filter(c => c.tenantId === currentTenant?.id || !c.tenantId);
   
   const [search, setSearch] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [isManagingCategories, setIsManagingCategories] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   
   // Form states
@@ -21,7 +23,7 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({ onClose }) => {
   const [newPrice, setNewPrice] = useState('');
   const [newPurchasePrice, setNewPurchasePrice] = useState('');
   const [newStock, setNewStock] = useState('0');
-  const [newCategoryId, setNewCategoryId] = useState(mockCategories[0].id);
+  const [newCategoryId, setNewCategoryId] = useState(categories.length > 0 ? categories[0].id : '');
   const [newImage, setNewImage] = useState('');
   const [isAvailable, setIsAvailable] = useState(true);
 
@@ -90,6 +92,33 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({ onClose }) => {
     setIsCreating(false);
   };
 
+  const handleCreateCategory = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCategoryName.trim()) return;
+    addCategory({
+      name: newCategoryName,
+      color: 'bg-dark-600',
+      icon: 'Tag',
+      tenantId: currentTenant?.id
+    });
+    setNewCategoryName('');
+    showNotification('success', 'Catégorie ajoutée avec succès.');
+  };
+
+  const handleDeleteCategoryClick = (categoryId: string) => {
+    // Vérifier si des produits utilisent cette catégorie
+    const isUsed = products.some(p => p.categoryId === categoryId);
+    if (isUsed) {
+      showNotification('alert', 'Impossible de supprimer cette catégorie car des articles y sont associés.');
+      return;
+    }
+    showNotification(
+      'confirm',
+      'Voulez-vous vraiment supprimer cette catégorie ?',
+      () => deleteCategory(categoryId)
+    );
+  };
+
   return (
     <div className="fixed inset-0 bg-black/80 flex justify-center items-center z-50 p-4 overflow-y-auto">
       <div className="bg-dark-800 rounded-3xl w-full max-w-2xl flex flex-col h-[85vh] shadow-2xl">
@@ -120,85 +149,142 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({ onClose }) => {
                   className="w-full px-4 py-3 bg-dark-800 border border-dark-700 rounded-xl focus:outline-none focus:border-primary transition-colors text-white"
                 />
               </div>
-              <button 
-                onClick={() => {
-                  setEditingProduct(null);
-                  setNewName('');
-                  setNewPrice('');
-                  setNewStock('0');
-                  setNewImage('');
-                  setIsCreating(true);
-                }}
-                className="px-4 sm:px-6 py-3 bg-primary text-white rounded-xl font-bold hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 shrink-0 animate-pulse w-full sm:w-auto"
+              <button
+                onClick={() => setIsManagingCategories(!isManagingCategories)}
+                className={`px-4 py-3 rounded-xl font-bold transition-colors flex items-center justify-center gap-2 shrink-0 ${isManagingCategories ? 'bg-primary text-white' : 'bg-dark-800 text-gray-300 hover:bg-dark-700 border border-dark-700'}`}
               >
-                <Plus size={20} />
-                <span className="hidden sm:inline">Créer un Article</span>
-                <span className="sm:hidden">Nouvel Article</span>
+                <Tag size={20} />
+                <span className="hidden sm:inline">{isManagingCategories ? 'Retour Articles' : 'Gérer les Catégories'}</span>
               </button>
-            </div>
 
-            {/* Articles List */}
-            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
-              {filteredProducts.map(product => (
-                <div key={product.id} className={`flex items-center justify-between bg-dark-900 border border-dark-700 rounded-2xl p-4 gap-4 shadow-md transition-opacity ${product.isAvailable === false ? 'opacity-50 grayscale' : ''}`}>
-                  <div className="flex items-center gap-4">
-                    {product.image ? (
-                      <img src={product.image} alt={product.name} className="w-14 h-14 rounded-xl object-cover border border-dark-700" />
-                    ) : (
-                      <div className="w-14 h-14 bg-dark-800 rounded-xl border border-dark-700 flex items-center justify-center text-gray-500 font-bold">
-                        N/A
-                      </div>
-                    )}
-                    <div>
-                      <p className="font-bold text-white text-lg">{product.name}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-gray-400 bg-dark-800 px-2 py-0.5 rounded border border-dark-700">
-                          {mockCategories.find(c => c.id === product.categoryId)?.name || 'Catégorie'}
-                        </span>
-                        <span className="text-sm font-bold text-emerald-400">
-                          {Math.round(product.price).toLocaleString('fr-FR')} F CFA
-                        </span>
-                        {product.isAvailable === false && (
-                          <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-red-500/20 text-red-500 ml-2">
-                            INDISPONIBLE
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      onClick={() => handleEditClick(product)}
-                      className="p-3 bg-dark-700 rounded-xl text-blue-400 hover:bg-dark-600 transition-colors active:scale-95 cursor-pointer"
-                      title="Modifier les informations"
-                    >
-                      <Edit2 size={18} />
-                    </button>
-                    {product.isAvailable !== false ? (
-                      <button
-                        onClick={() => handleToggleAvailable(product)}
-                        className="p-3 bg-red-500/10 rounded-xl text-red-400 hover:bg-red-500/20 transition-colors active:scale-95 cursor-pointer text-sm font-semibold"
-                        title="Désactiver l'article"
-                      >
-                        Désactiver
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handleToggleAvailable(product)}
-                        className="p-3 bg-green-500/10 rounded-xl text-green-400 hover:bg-green-500/20 transition-colors active:scale-95 cursor-pointer text-sm font-semibold"
-                        title="Activer l'article"
-                      >
-                        Activer
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {filteredProducts.length === 0 && (
-                <div className="text-center text-gray-500 py-10">Aucun article dans le catalogue.</div>
+              {!isManagingCategories && (
+                <button 
+                  onClick={() => {
+                    setEditingProduct(null);
+                    setNewName('');
+                    setNewPrice('');
+                    setNewPurchasePrice('');
+                    setNewStock('0');
+                    setNewCategoryId(categories.length > 0 ? categories[0].id : '');
+                    setNewImage('');
+                    setIsAvailable(true);
+                    setIsCreating(true);
+                  }}
+                  className="px-4 sm:px-6 py-3 bg-primary text-white rounded-xl font-bold hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 shrink-0 animate-pulse w-full sm:w-auto"
+                >
+                  <Plus size={20} />
+                  <span className="hidden sm:inline">Créer un Article</span>
+                  <span className="sm:hidden">Nouvel Article</span>
+                </button>
               )}
             </div>
+
+            {/* Categories Management View */}
+            {isManagingCategories ? (
+              <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
+                <form onSubmit={handleCreateCategory} className="flex gap-4">
+                  <input
+                    type="text"
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    placeholder="Nom de la nouvelle catégorie..."
+                    className="flex-1 px-4 py-3 bg-dark-900 border border-dark-700 rounded-xl focus:outline-none focus:border-primary text-white font-medium"
+                  />
+                  <button
+                    type="submit"
+                    className="px-6 py-3 bg-primary text-white rounded-xl font-bold hover:bg-primary/90 transition-colors flex items-center gap-2 shrink-0"
+                  >
+                    <Plus size={20} /> Ajouter
+                  </button>
+                </form>
+
+                <div className="flex flex-col gap-3">
+                  {categories.map(cat => (
+                    <div key={cat.id} className="flex items-center justify-between p-4 bg-dark-900 border border-dark-700 rounded-xl">
+                      <div className="flex items-center gap-3">
+                        <Tag size={20} className="text-gray-400" />
+                        <span className="text-white font-bold">{cat.name}</span>
+                        {!cat.tenantId && (
+                          <span className="text-xs bg-dark-800 text-gray-400 px-2 py-1 rounded-full border border-dark-700">Système</span>
+                        )}
+                      </div>
+                      {cat.tenantId && (
+                        <button
+                          onClick={() => handleDeleteCategoryClick(cat.id)}
+                          className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                          title="Supprimer la catégorie"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              /* Articles List */
+              <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
+                {filteredProducts.map(product => (
+                  <div key={product.id} className={`flex items-center justify-between bg-dark-900 border border-dark-700 rounded-2xl p-4 gap-4 shadow-md transition-opacity ${product.isAvailable === false ? 'opacity-50 grayscale' : ''}`}>
+                    <div className="flex items-center gap-4">
+                      {product.image ? (
+                        <img src={product.image} alt={product.name} className="w-14 h-14 rounded-xl object-cover border border-dark-700" />
+                      ) : (
+                        <div className="w-14 h-14 bg-dark-800 rounded-xl border border-dark-700 flex items-center justify-center text-gray-500 font-bold">
+                          N/A
+                        </div>
+                      )}
+                      <div>
+                        <p className="font-bold text-white text-lg">{product.name}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs text-gray-400 bg-dark-800 px-2 py-0.5 rounded border border-dark-700">
+                            {categories.find(c => c.id === product.categoryId)?.name || 'Catégorie'}
+                          </span>
+                          <span className="text-sm font-bold text-emerald-400">
+                            {Math.round(product.price).toLocaleString('fr-FR')} F CFA
+                          </span>
+                          {product.isAvailable === false && (
+                            <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-red-500/20 text-red-500 ml-2">
+                              INDISPONIBLE
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => handleEditClick(product)}
+                        className="p-3 bg-dark-700 rounded-xl text-blue-400 hover:bg-dark-600 transition-colors active:scale-95 cursor-pointer"
+                        title="Modifier les informations"
+                      >
+                        <Edit2 size={18} />
+                      </button>
+                      {product.isAvailable !== false ? (
+                        <button
+                          onClick={() => handleToggleAvailable(product)}
+                          className="p-3 bg-red-500/10 rounded-xl text-red-400 hover:bg-red-500/20 transition-colors active:scale-95 cursor-pointer text-sm font-semibold"
+                          title="Désactiver l'article"
+                        >
+                          Désactiver
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleToggleAvailable(product)}
+                          className="p-3 bg-green-500/10 rounded-xl text-green-400 hover:bg-green-500/20 transition-colors active:scale-95 cursor-pointer text-sm font-semibold"
+                          title="Activer l'article"
+                        >
+                          Activer
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {filteredProducts.length === 0 && (
+                  <div className="text-center text-gray-500 py-10">Aucun article dans le catalogue.</div>
+                )}
+              </div>
+            )}
           </>
         ) : (
           /* CREATE / UPDATE ARTICLE FORM */
@@ -259,7 +345,7 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({ onClose }) => {
                   onChange={(e) => setNewCategoryId(e.target.value)}
                   className="w-full px-4 py-3 bg-dark-800 border border-dark-700 rounded-xl focus:outline-none focus:border-primary text-white font-semibold"
                 >
-                  {mockCategories.map(cat => (
+                  {categories.map(cat => (
                     <option key={cat.id} value={cat.id}>{cat.name}</option>
                   ))}
                 </select>

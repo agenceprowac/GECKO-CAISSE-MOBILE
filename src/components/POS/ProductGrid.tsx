@@ -1,8 +1,7 @@
 import React, { useState, useMemo } from 'react';
 
 import { usePOSStore } from '../../store';
-import { mockCategories } from '../../data/mockData';
-import { Beer, Martini, Wine, CupSoda, Pizza, Search, X } from 'lucide-react';
+import { Beer, Martini, Wine, CupSoda, Pizza, Search, X, Tag } from 'lucide-react';
 
 const iconMap: Record<string, React.ReactNode> = {
   Beer: <Beer size={24} />,
@@ -10,12 +9,14 @@ const iconMap: Record<string, React.ReactNode> = {
   Wine: <Wine size={24} />,
   CupSoda: <CupSoda size={24} />,
   Pizza: <Pizza size={24} />,
+  Tag: <Tag size={24} />,
 };
 
 export const ProductGrid: React.FC = () => {
-  const [activeCategory, setActiveCategory] = useState<string>(mockCategories[0].id);
+  const { addToCart, getProductsByTenant, getCategoriesByTenant } = usePOSStore();
+  const categories = getCategoriesByTenant();
+  const [activeCategory, setActiveCategory] = useState<string>(categories.length > 0 ? categories[0].id : '');
   const [searchQuery, setSearchQuery] = useState('');
-  const { addToCart, getProductsByTenant } = usePOSStore();
   const products = getProductsByTenant();
 
   const filteredProducts = useMemo(() => {
@@ -54,7 +55,7 @@ export const ProductGrid: React.FC = () => {
       </div>
       {/* Categories Bar */}
       <div className="flex gap-2 p-4 overflow-x-auto no-scrollbar shrink-0 bg-dark-800 border-b border-dark-700">
-        {mockCategories.map(cat => (
+        {categories.map(cat => (
           <button
             key={cat.id}
             onClick={() => setActiveCategory(cat.id)}
@@ -62,7 +63,7 @@ export const ProductGrid: React.FC = () => {
               activeCategory === cat.id ? cat.color + ' text-white' : 'bg-dark-700 text-gray-300'
             }`}
           >
-            <div className="mb-2">{iconMap[cat.icon]}</div>
+            <div className="mb-2">{iconMap[cat.icon] || iconMap['Tag']}</div>
             <span className="text-sm font-medium">{cat.name}</span>
           </button>
         ))}
@@ -72,7 +73,7 @@ export const ProductGrid: React.FC = () => {
       <div className="flex-1 overflow-y-auto p-4">
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 pb-24">
           {filteredProducts.map(product => {
-            const category = mockCategories.find(c => c.id === product.categoryId);
+            const category = categories.find(c => c.id === product.categoryId);
             return (
               <button
                 key={product.id}

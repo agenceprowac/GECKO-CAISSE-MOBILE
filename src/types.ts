@@ -19,6 +19,7 @@ export type Category = {
   name: string;
   color: string;
   icon: string;
+  tenantId?: string;
 };
 
 export type Product = {
