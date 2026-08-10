@@ -36,7 +36,7 @@ export const UsersPage: React.FC = () => {
     }
 
     if (editingUser) {
-      updateUser({ id: editingUser.id, name: userName, pinCode, role, isActive });
+      updateUser({ ...editingUser, name: userName, pinCode, role, isActive });
     } else {
       addUser({ name: userName, pinCode, role, isActive });
     }
