@@ -8,7 +8,7 @@ interface ArticleManagerProps {
 }
 
 export const ArticleManager: React.FC<ArticleManagerProps> = ({ onClose }) => {
-  const { currentTenant, products: allProducts, categories: allCategories, addProduct, updateProduct, deleteProduct, addCategory, updateCategory, deleteCategory, showNotification } = usePOSStore();
+  const { currentTenant, products: allProducts, categories: allCategories, addProduct, updateProduct, addCategory, updateCategory, deleteCategory, showNotification } = usePOSStore();
   const products = allProducts.filter(p => p.tenantId === currentTenant?.id);
   const categories = allCategories.filter(c => c.tenantId === currentTenant?.id || !c.tenantId);
   

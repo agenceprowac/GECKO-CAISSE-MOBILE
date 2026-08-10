@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { usePOSStore } from '../../store';
-import { Plus, Edit2, Trash2, Check, ShieldCheck, Key } from 'lucide-react';
+import { Plus, Edit2, Check, ShieldCheck, Key } from 'lucide-react';
 import type { User } from '../../types';
 
 export const UsersPage: React.FC = () => {
-  const { users: allUsers, currentTenant, addUser, updateUser, deleteUser, showNotification } = usePOSStore();
+  const { users: allUsers, currentTenant, addUser, updateUser, showNotification } = usePOSStore();
   const users = allUsers.filter(u => u.tenantId === currentTenant?.id);
   const [isEditing, setIsEditing] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
