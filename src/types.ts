@@ -26,7 +26,9 @@ export type Product = {
   categoryId: string;
   name: string;
   price: number;
+  purchasePrice?: number;
   stock: number;
+  isAvailable?: boolean;
   image?: string;
   tenantId?: string;
 };
@@ -48,6 +50,7 @@ export type User = {
   name: string;
   pinCode: string;
   role: 'SUPER_ADMIN' | 'ADMIN' | 'BARMAN' | 'WAITER';
+  isActive?: boolean;
   tenantId?: string;
 };
 

@@ -24,7 +24,12 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ onClose }) => {
   const quickAmounts = [1000, 2000, 5000, 10000, 20000];
 
   const handleValidate = () => {
-    // Enregistrer la vente dans l'historique
+    // 1. Déduire les stocks pour chaque article vendu D'ABORD (localement)
+    cart.forEach(item => {
+      updateStock(item.product.id, -item.quantity);
+    });
+
+    // 2. Enregistrer la vente dans l'historique (ceci va déclencher la synchronisation Cloud qui va capturer l'état local mis à jour juste au-dessus)
     if (currentUser) {
       addSale({
         sellerId: currentUser.id,
@@ -34,11 +39,6 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ onClose }) => {
         paymentMethod
       });
     }
-
-    // Déduire les stocks pour chaque article vendu
-    cart.forEach(item => {
-      updateStock(item.product.id, -item.quantity);
-    });
 
     showNotification(
       'alert',

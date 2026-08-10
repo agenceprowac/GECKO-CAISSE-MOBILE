@@ -75,7 +75,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           update: {
             name: prod.name,
             price: prod.price,
+            purchasePrice: prod.purchasePrice || 0,
             stock: prod.stock,
+            isAvailable: prod.isAvailable !== false,
             image: prod.image || null,
             categoryId: categoryId
           },
@@ -85,7 +87,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             categoryId: categoryId,
             name: prod.name,
             price: prod.price,
+            purchasePrice: prod.purchasePrice || 0,
             stock: prod.stock,
+            isAvailable: prod.isAvailable !== false,
             image: prod.image || null
           }
         });
@@ -124,14 +128,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           update: {
             name: usr.name,
             pinCode: usr.pinCode,
-            role: usr.role
+            role: usr.role,
+            isActive: usr.isActive !== false
           },
           create: {
             id: usr.id,
             tenantId: tenantId,
             name: usr.name,
             pinCode: usr.pinCode,
-            role: usr.role
+            role: usr.role,
+            isActive: usr.isActive !== false
           }
         });
       }

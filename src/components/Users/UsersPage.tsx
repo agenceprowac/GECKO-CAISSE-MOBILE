@@ -5,7 +5,7 @@ import type { User } from '../../types';
 
 export const UsersPage: React.FC = () => {
   const { getUsersByTenant, addUser, updateUser, deleteUser, showNotification } = usePOSStore();
-  const users = getUsersByTenant();
+  const users = getUsersByTenant(true); // Inclure les inactifs pour pouvoir les gérer
   const [isEditing, setIsEditing] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   
@@ -13,21 +13,19 @@ export const UsersPage: React.FC = () => {
   const [userName, setUserName] = useState('');
   const [pinCode, setPinCode] = useState('');
   const [role, setRole] = useState<'ADMIN' | 'BARMAN' | 'WAITER'>('WAITER');
+  const [isActive, setIsActive] = useState(true);
 
   const handleEditClick = (user: User) => {
     setEditingUser(user);
     setUserName(user.name);
     setPinCode(user.pinCode);
     setRole(user.role as any);
+    setIsActive(user.isActive !== false);
     setIsEditing(true);
   };
 
-  const handleDeleteClick = (userId: string) => {
-    showNotification(
-      'confirm',
-      'Voulez-vous vraiment supprimer cet utilisateur ?',
-      () => deleteUser(userId)
-    );
+  const handleToggleActive = (user: User) => {
+    updateUser({ ...user, isActive: user.isActive === false ? true : false });
   };
 
   const handleSave = (e: React.FormEvent) => {
@@ -38,14 +36,15 @@ export const UsersPage: React.FC = () => {
     }
 
     if (editingUser) {
-      updateUser({ id: editingUser.id, name: userName, pinCode, role });
+      updateUser({ id: editingUser.id, name: userName, pinCode, role, isActive });
     } else {
-      addUser({ name: userName, pinCode, role });
+      addUser({ name: userName, pinCode, role, isActive });
     }
 
     setUserName('');
     setPinCode('');
     setRole('WAITER');
+    setIsActive(true);
     setEditingUser(null);
     setIsEditing(false);
   };
@@ -80,6 +79,7 @@ export const UsersPage: React.FC = () => {
                 setUserName('');
                 setPinCode('');
                 setRole('WAITER');
+                setIsActive(true);
                 setIsEditing(true);
               }}
               className="px-6 py-3 bg-primary text-white rounded-xl font-bold hover:bg-primary/90 transition-colors flex items-center gap-2"
@@ -134,6 +134,19 @@ export const UsersPage: React.FC = () => {
                 </select>
               </div>
 
+              <div className="flex items-center gap-3 p-4 bg-dark-900 border border-dark-700 rounded-xl">
+                <input
+                  type="checkbox"
+                  id="userActive"
+                  checked={isActive}
+                  onChange={(e) => setIsActive(e.target.checked)}
+                  className="w-5 h-5 accent-primary bg-dark-800 border-dark-700 rounded"
+                />
+                <label htmlFor="userActive" className="text-white font-medium cursor-pointer">
+                  Utilisateur Actif <span className="text-gray-400 text-sm block font-normal">S'il est désactivé, l'utilisateur ne pourra plus se connecter.</span>
+                </label>
+              </div>
+
               <div className="flex gap-4 mt-4">
                 <button
                   type="button"
@@ -155,19 +168,24 @@ export const UsersPage: React.FC = () => {
         ) : (
           <div className="flex flex-col gap-6">
             {users.map(user => (
-              <div key={user.id} className="p-6 bg-dark-800 border border-dark-700 rounded-3xl flex flex-col md:flex-row md:items-center md:justify-between gap-4 shadow-lg">
+              <div key={user.id} className={`p-6 bg-dark-800 border border-dark-700 rounded-3xl flex flex-col md:flex-row md:items-center md:justify-between gap-4 shadow-lg transition-opacity ${user.isActive === false ? 'opacity-50 grayscale' : ''}`}>
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 bg-purple-500/10 rounded-2xl flex items-center justify-center text-purple-400 shrink-0">
                     {user.role === 'ADMIN' ? <ShieldCheck size={24} /> : <Key size={24} />}
                   </div>
                   <div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 flex-wrap">
                       <p className="font-bold text-lg">{user.name}</p>
                       <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
                         user.role === 'ADMIN' ? 'bg-red-500/20 text-red-400' : user.role === 'BARMAN' ? 'bg-blue-500/20 text-blue-400' : 'bg-green-500/20 text-green-400'
                       }`}>
                         {user.role}
                       </span>
+                      {user.isActive === false && (
+                        <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-red-500/20 text-red-500">
+                          DÉSACTIVÉ
+                        </span>
+                      )}
                     </div>
                     <p className="text-sm text-gray-400 mt-1 font-medium">
                       Code PIN : <span className="font-mono font-bold text-white bg-dark-900 px-2 py-0.5 rounded border border-dark-700">•••• (Masqué)</span>
@@ -184,12 +202,21 @@ export const UsersPage: React.FC = () => {
                   >
                     <Edit2 size={16} /> Modifier
                   </button>
-                  <button
-                    onClick={() => handleDeleteClick(user.id)}
-                    className="p-3 bg-dark-700 rounded-xl text-red-500 hover:bg-dark-600 transition-colors flex items-center gap-2 text-sm font-semibold"
-                  >
-                    <Trash2 size={16} /> Supprimer
-                  </button>
+                  {user.isActive !== false ? (
+                    <button
+                      onClick={() => handleToggleActive(user)}
+                      className="p-3 bg-red-500/10 text-red-400 rounded-xl hover:bg-red-500/20 transition-colors flex items-center gap-2 text-sm font-semibold"
+                    >
+                      Désactiver
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleToggleActive(user)}
+                      className="p-3 bg-green-500/10 text-green-400 rounded-xl hover:bg-green-500/20 transition-colors flex items-center gap-2 text-sm font-semibold"
+                    >
+                      Activer
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

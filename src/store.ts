@@ -37,7 +37,7 @@ interface POSState {
 
   // Products & Inventory History
   products: Product[];
-  getProductsByTenant: () => Product[];
+  getProductsByTenant: (includeInactive?: boolean) => Product[];
   stockHistory: StockHistoryEntry[];
   getStockHistoryByTenant: () => StockHistoryEntry[];
   updateStock: (productId: string, quantityToAdd: number) => void;
@@ -54,7 +54,7 @@ interface POSState {
   
   // Users
   users: User[];
-  getUsersByTenant: () => User[];
+  getUsersByTenant: (includeInactive?: boolean) => User[];
   addUser: (user: Omit<User, 'id'>) => void;
   updateUser: (user: User) => void;
   deleteUser: (userId: string) => void;
@@ -689,9 +689,10 @@ export const usePOSStore = create<POSState>((set, get) => {
     },
 
     // Getters filtered by active tenant
-    getProductsByTenant: () => {
-      const tenantId = get().currentTenant?.id;
-      return get().products.filter(p => p.tenantId === tenantId);
+    getProductsByTenant: (includeInactive = false) => {
+      const state = get();
+      const all = state.products.filter(p => p.tenantId === state.currentTenant?.id);
+      return includeInactive ? all : all.filter(p => p.isAvailable !== false);
     },
 
     getTablesByTenant: () => {
@@ -699,9 +700,10 @@ export const usePOSStore = create<POSState>((set, get) => {
       return get().tables.filter(t => t.tenantId === tenantId);
     },
 
-    getUsersByTenant: () => {
-      const tenantId = get().currentTenant?.id;
-      return get().users.filter(u => u.tenantId === tenantId);
+    getUsersByTenant: (includeInactive = false) => {
+      const state = get();
+      const all = state.users.filter(u => u.tenantId === state.currentTenant?.id);
+      return includeInactive ? all : all.filter(u => u.isActive !== false);
     },
 
     getSalesByTenant: () => {

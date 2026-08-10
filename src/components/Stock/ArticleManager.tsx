@@ -10,7 +10,7 @@ interface ArticleManagerProps {
 
 export const ArticleManager: React.FC<ArticleManagerProps> = ({ onClose }) => {
   const { currentTenant, getProductsByTenant, addProduct, updateProduct, deleteProduct, showNotification } = usePOSStore();
-  const products = getProductsByTenant();
+  const products = getProductsByTenant(true);
   
   const [search, setSearch] = useState('');
   const [isCreating, setIsCreating] = useState(false);
@@ -19,9 +19,11 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({ onClose }) => {
   // Form states
   const [newName, setNewName] = useState('');
   const [newPrice, setNewPrice] = useState('');
+  const [newPurchasePrice, setNewPurchasePrice] = useState('');
   const [newStock, setNewStock] = useState('0');
   const [newCategoryId, setNewCategoryId] = useState(mockCategories[0].id);
   const [newImage, setNewImage] = useState('');
+  const [isAvailable, setIsAvailable] = useState(true);
 
   const filteredProducts = products.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
 
@@ -29,18 +31,16 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({ onClose }) => {
     setEditingProduct(product);
     setNewName(product.name);
     setNewPrice(product.price.toString());
+    setNewPurchasePrice(product.purchasePrice?.toString() || '');
     setNewStock(product.stock.toString());
     setNewCategoryId(product.categoryId);
     setNewImage(product.image || '');
+    setIsAvailable(product.isAvailable !== false);
     setIsCreating(true);
   };
 
-  const handleDeleteClick = (productId: string) => {
-    showNotification(
-      'confirm',
-      'Voulez-vous vraiment supprimer cet article ? Toutes les données de stock et ventes associées resteront historisées.',
-      () => deleteProduct(productId)
-    );
+  const handleToggleAvailable = (product: Product) => {
+    updateProduct({ ...product, isAvailable: product.isAvailable === false ? true : false });
   };
 
   const handleCreateOrUpdate = (e: React.FormEvent) => {
@@ -52,9 +52,11 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({ onClose }) => {
         id: editingProduct.id,
         name: newName,
         price: parseFloat(newPrice) || 0,
+        purchasePrice: parseFloat(newPurchasePrice) || 0,
         stock: parseInt(newStock, 10) || 0,
         categoryId: newCategoryId,
-        image: newImage || undefined
+        image: newImage || undefined,
+        isAvailable
       });
     } else {
       // Restriction de plan Standard : Limite à 15 produits
@@ -69,17 +71,21 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({ onClose }) => {
       addProduct({
         name: newName,
         price: parseFloat(newPrice) || 0,
+        purchasePrice: parseFloat(newPurchasePrice) || 0,
         stock: parseInt(newStock, 10) || 0,
         categoryId: newCategoryId,
-        image: newImage || undefined
+        image: newImage || undefined,
+        isAvailable
       });
     }
     
     // Reset Form
     setNewName('');
     setNewPrice('');
+    setNewPurchasePrice('');
     setNewStock('0');
     setNewImage('');
+    setIsAvailable(true);
     setEditingProduct(null);
     setIsCreating(false);
   };
@@ -134,7 +140,7 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({ onClose }) => {
             {/* Articles List */}
             <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
               {filteredProducts.map(product => (
-                <div key={product.id} className="flex items-center justify-between bg-dark-900 border border-dark-700 rounded-2xl p-4 gap-4 shadow-md">
+                <div key={product.id} className={`flex items-center justify-between bg-dark-900 border border-dark-700 rounded-2xl p-4 gap-4 shadow-md transition-opacity ${product.isAvailable === false ? 'opacity-50 grayscale' : ''}`}>
                   <div className="flex items-center gap-4">
                     {product.image ? (
                       <img src={product.image} alt={product.name} className="w-14 h-14 rounded-xl object-cover border border-dark-700" />
@@ -152,6 +158,11 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({ onClose }) => {
                         <span className="text-sm font-bold text-emerald-400">
                           {Math.round(product.price).toLocaleString('fr-FR')} F CFA
                         </span>
+                        {product.isAvailable === false && (
+                          <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-red-500/20 text-red-500 ml-2">
+                            INDISPONIBLE
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -164,13 +175,23 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({ onClose }) => {
                     >
                       <Edit2 size={18} />
                     </button>
-                    <button
-                      onClick={() => handleDeleteClick(product.id)}
-                      className="p-3 bg-dark-700 rounded-xl text-red-500 hover:bg-dark-600 transition-colors active:scale-95 cursor-pointer"
-                      title="Supprimer"
-                    >
-                      <Trash2 size={18} />
-                    </button>
+                    {product.isAvailable !== false ? (
+                      <button
+                        onClick={() => handleToggleAvailable(product)}
+                        className="p-3 bg-red-500/10 rounded-xl text-red-400 hover:bg-red-500/20 transition-colors active:scale-95 cursor-pointer text-sm font-semibold"
+                        title="Désactiver l'article"
+                      >
+                        Désactiver
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleToggleAvailable(product)}
+                        className="p-3 bg-green-500/10 rounded-xl text-green-400 hover:bg-green-500/20 transition-colors active:scale-95 cursor-pointer text-sm font-semibold"
+                        title="Activer l'article"
+                      >
+                        Activer
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -197,6 +218,16 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({ onClose }) => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col justify-end">
+                  <label className="block text-gray-400 mb-2 font-medium text-sm truncate">Prix d'Achat</label>
+                  <input 
+                    type="number"
+                    value={newPurchasePrice}
+                    onChange={(e) => setNewPurchasePrice(e.target.value)}
+                    className="w-full px-4 py-3 bg-dark-800 border border-dark-700 rounded-xl focus:outline-none focus:border-primary text-white"
+                    placeholder="Ex: 1500"
+                  />
+                </div>
+                <div className="flex flex-col justify-end">
                   <label className="block text-gray-400 mb-2 font-medium text-sm truncate">Prix de Vente</label>
                   <input 
                     type="number"
@@ -207,8 +238,10 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({ onClose }) => {
                     placeholder="Ex: 2000"
                   />
                 </div>
-                <div className="flex flex-col justify-end">
-                  <label className="block text-gray-400 mb-2 font-medium text-sm truncate">Stock Initial</label>
+              </div>
+
+              <div className="flex flex-col justify-end">
+                <label className="block text-gray-400 mb-2 font-medium text-sm truncate">Stock Initial</label>
                   <input 
                     type="number"
                     required
@@ -218,7 +251,6 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({ onClose }) => {
                     className="w-full px-4 py-3 bg-dark-800 border border-dark-700 rounded-xl focus:outline-none focus:border-primary text-white disabled:opacity-50"
                   />
                 </div>
-              </div>
 
               <div>
                 <label className="block text-gray-400 mb-2 font-medium">Catégorie</label>
@@ -231,6 +263,19 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({ onClose }) => {
                     <option key={cat.id} value={cat.id}>{cat.name}</option>
                   ))}
                 </select>
+              </div>
+
+              <div className="flex items-center gap-3 p-4 bg-dark-900 border border-dark-700 rounded-xl">
+                <input
+                  type="checkbox"
+                  id="productAvailable"
+                  checked={isAvailable}
+                  onChange={(e) => setIsAvailable(e.target.checked)}
+                  className="w-5 h-5 accent-primary bg-dark-800 border-dark-700 rounded"
+                />
+                <label htmlFor="productAvailable" className="text-white font-medium cursor-pointer">
+                  Article Disponible <span className="text-gray-400 text-sm block font-normal">S'il est désactivé, l'article disparaîtra de la caisse.</span>
+                </label>
               </div>
 
               <div>

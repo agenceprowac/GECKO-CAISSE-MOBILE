@@ -37,6 +37,7 @@ model User {
   name      String
   pinCode   String   // PIN 4 chiffres pour switch rapide
   role      String   @default("WAITER")
+  isActive  Boolean  @default(true)
 
   
   tenant    Tenant?  @relation(fields: [tenantId], references: [id])
@@ -60,6 +61,7 @@ model Product {
   categoryId    String
   name          String
   price         Float
+  purchasePrice Float               @default(0)
   stock         Int                 @default(0) // Gestion de stock simple
   isAvailable   Boolean             @default(true)
   image         String?
