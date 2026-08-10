@@ -9,8 +9,8 @@ interface ArticleManagerProps {
 }
 
 export const ArticleManager: React.FC<ArticleManagerProps> = ({ onClose }) => {
-  const { currentTenant, getProductsByTenant, addProduct, updateProduct, deleteProduct, showNotification } = usePOSStore();
-  const products = getProductsByTenant(true);
+  const { currentTenant, products: allProducts, addProduct, updateProduct, deleteProduct, showNotification } = usePOSStore();
+  const products = allProducts.filter(p => p.tenantId === currentTenant?.id);
   
   const [search, setSearch] = useState('');
   const [isCreating, setIsCreating] = useState(false);

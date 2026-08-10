@@ -4,8 +4,8 @@ import { Plus, Edit2, Trash2, Check, ShieldCheck, Key } from 'lucide-react';
 import type { User } from '../../types';
 
 export const UsersPage: React.FC = () => {
-  const { getUsersByTenant, addUser, updateUser, deleteUser, showNotification } = usePOSStore();
-  const users = getUsersByTenant(true); // Inclure les inactifs pour pouvoir les gérer
+  const { users: allUsers, currentTenant, addUser, updateUser, deleteUser, showNotification } = usePOSStore();
+  const users = allUsers.filter(u => u.tenantId === currentTenant?.id);
   const [isEditing, setIsEditing] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   
