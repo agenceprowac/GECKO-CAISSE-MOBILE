@@ -8,7 +8,7 @@ interface ArticleManagerProps {
 }
 
 export const ArticleManager: React.FC<ArticleManagerProps> = ({ onClose }) => {
-  const { currentTenant, products: allProducts, categories: allCategories, addProduct, updateProduct, deleteProduct, addCategory, deleteCategory, showNotification } = usePOSStore();
+  const { currentTenant, products: allProducts, categories: allCategories, addProduct, updateProduct, deleteProduct, addCategory, updateCategory, deleteCategory, showNotification } = usePOSStore();
   const products = allProducts.filter(p => p.tenantId === currentTenant?.id);
   const categories = allCategories.filter(c => c.tenantId === currentTenant?.id || !c.tenantId);
   
@@ -16,6 +16,8 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({ onClose }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [isManagingCategories, setIsManagingCategories] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [editCategoryName, setEditCategoryName] = useState('');
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   
   // Form states
@@ -103,6 +105,16 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({ onClose }) => {
     });
     setNewCategoryName('');
     showNotification('success', 'Catégorie ajoutée avec succès.');
+  };
+
+  const handleUpdateCategory = (category: typeof categories[0]) => {
+    if (!editCategoryName.trim()) return;
+    updateCategory({
+      ...category,
+      name: editCategoryName
+    });
+    setEditingCategoryId(null);
+    showNotification('success', 'Catégorie modifiée.');
   };
 
   const handleDeleteCategoryClick = (categoryId: string) => {
@@ -201,21 +213,61 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({ onClose }) => {
                 <div className="flex flex-col gap-3">
                   {categories.map(cat => (
                     <div key={cat.id} className="flex items-center justify-between p-4 bg-dark-900 border border-dark-700 rounded-xl">
-                      <div className="flex items-center gap-3">
-                        <Tag size={20} className="text-gray-400" />
-                        <span className="text-white font-bold">{cat.name}</span>
-                        {!cat.tenantId && (
-                          <span className="text-xs bg-dark-800 text-gray-400 px-2 py-1 rounded-full border border-dark-700">Système</span>
-                        )}
-                      </div>
-                      {cat.tenantId && (
-                        <button
-                          onClick={() => handleDeleteCategoryClick(cat.id)}
-                          className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                          title="Supprimer la catégorie"
-                        >
-                          <Trash2 size={18} />
-                        </button>
+                      {editingCategoryId === cat.id ? (
+                        <div className="flex items-center gap-3 w-full">
+                          <input
+                            type="text"
+                            value={editCategoryName}
+                            onChange={(e) => setEditCategoryName(e.target.value)}
+                            className="flex-1 px-3 py-2 bg-dark-800 border border-dark-700 rounded-lg focus:outline-none focus:border-primary text-white font-medium"
+                            autoFocus
+                          />
+                          <button
+                            onClick={() => handleUpdateCategory(cat)}
+                            className="p-2 text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-colors"
+                            title="Sauvegarder"
+                          >
+                            <Check size={20} />
+                          </button>
+                          <button
+                            onClick={() => setEditingCategoryId(null)}
+                            className="p-2 text-gray-400 hover:bg-dark-700 rounded-lg transition-colors"
+                            title="Annuler"
+                          >
+                            <X size={20} />
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-3">
+                            <Tag size={20} className="text-gray-400" />
+                            <span className="text-white font-bold">{cat.name}</span>
+                            {!cat.tenantId && (
+                              <span className="text-xs bg-dark-800 text-gray-400 px-2 py-1 rounded-full border border-dark-700">Système</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => {
+                                setEditingCategoryId(cat.id);
+                                setEditCategoryName(cat.name);
+                              }}
+                              className="p-2 text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors"
+                              title="Modifier la catégorie"
+                            >
+                              <Edit2 size={18} />
+                            </button>
+                            {cat.tenantId && (
+                              <button
+                                onClick={() => handleDeleteCategoryClick(cat.id)}
+                                className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                                title="Supprimer la catégorie"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            )}
+                          </div>
+                        </>
                       )}
                     </div>
                   ))}

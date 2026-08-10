@@ -40,6 +40,7 @@ interface POSState {
   categories: Category[];
   getCategoriesByTenant: () => Category[];
   addCategory: (category: Omit<Category, 'id'>) => void;
+  updateCategory: (category: Category) => void;
   deleteCategory: (categoryId: string) => void;
 
   // Products & Inventory History
@@ -713,6 +714,17 @@ export const usePOSStore = create<POSState>((set, get) => {
       const tenantId = get().currentTenant?.id;
       const updatedCategories = [...get().categories, { ...category, id: 'cat_' + crypto.randomUUID(), tenantId }];
       set({ categories: updatedCategories }); // Sync plus tard
+      persist({ categories: updatedCategories });
+      get().syncCloudData().catch(console.error);
+    },
+
+    updateCategory: (category) => {
+      const tenantId = get().currentTenant?.id;
+      // S'assurer que la catégorie modifiée est associée au bon tenantId 
+      // (Même si c'était une catégorie "système" sans tenantId à l'origine, elle devient propre à ce tenant)
+      const updatedCat = { ...category, tenantId: category.tenantId || tenantId };
+      const updatedCategories = get().categories.map(c => c.id === category.id ? updatedCat : c);
+      set({ categories: updatedCategories });
       persist({ categories: updatedCategories });
       get().syncCloudData().catch(console.error);
     },
