@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import type { OrderItem, Product, Table, User, Sale, Tenant, StockHistoryEntry, SubscriptionPlan } from './types';
+import type { OrderItem, Product, Table, User, Sale, Tenant, StockHistoryEntry, SubscriptionPlan, Category } from './types';
+import { mockCategories } from './data/mockData';
 
 interface POSState {
   // SaaS Tenants
