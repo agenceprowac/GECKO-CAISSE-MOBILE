@@ -53,6 +53,7 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({ onClose }) => {
     
     if (editingProduct) {
       updateProduct({
+        ...editingProduct,
         id: editingProduct.id,
         name: newName,
         price: parseFloat(newPrice) || 0,
@@ -288,13 +289,23 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({ onClose }) => {
                       )}
                       <div>
                         <p className="font-bold text-white text-lg">{product.name}</p>
-                        <div className="flex items-center gap-2 mt-1">
+                        <div className="flex flex-wrap items-center gap-2 mt-1">
                           <span className="text-xs text-gray-400 bg-dark-800 px-2 py-0.5 rounded border border-dark-700">
                             {categories.find(c => c.id === product.categoryId)?.name || 'Catégorie'}
                           </span>
                           <span className="text-sm font-bold text-emerald-400">
-                            {Math.round(product.price).toLocaleString('fr-FR')} F CFA
+                            Vente: {Math.round(product.price).toLocaleString('fr-FR')} F
                           </span>
+                          {product.purchasePrice ? (
+                            <>
+                              <span className="text-sm font-bold text-orange-400">
+                                Achat: {Math.round(product.purchasePrice).toLocaleString('fr-FR')} F
+                              </span>
+                              <span className="text-sm font-bold bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                                Bénéfice: {Math.round(product.price - product.purchasePrice).toLocaleString('fr-FR')} F
+                              </span>
+                            </>
+                          ) : null}
                           {product.isAvailable === false && (
                             <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-red-500/20 text-red-500 ml-2">
                               INDISPONIBLE

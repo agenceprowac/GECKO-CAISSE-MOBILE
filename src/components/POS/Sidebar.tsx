@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, LayoutDashboard, FileText, LogOut, Coffee, PackagePlus, Users, LayoutGrid, User, Tag } from 'lucide-react';
+import { X, LayoutDashboard, FileText, LogOut, Coffee, PackagePlus, Users, LayoutGrid, User, Tag, TestTube } from 'lucide-react';
 import { usePOSStore } from '../../store';
 
 interface SidebarProps {
@@ -24,6 +24,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const currentUser = usePOSStore(state => state.currentUser);
   const currentTenant = usePOSStore(state => state.currentTenant);
   const logoutTenant = usePOSStore(state => state.logoutTenant);
+  const isLocalTestMode = usePOSStore(state => state.isLocalTestMode);
+  const toggleTestMode = usePOSStore(state => state.toggleTestMode);
 
   if (!isOpen) return null;
 
@@ -123,6 +125,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <PackagePlus size={20} />
                   Gestion des Stocks
                 </button>
+              )}
+
+              {currentUser?.role === 'ADMIN' && (
+                <>
+                  <div className="border-t border-dark-800 my-2" />
+                  <button 
+                    onClick={() => {
+                      toggleTestMode();
+                      onClose();
+                    }}
+                    className={`flex items-center gap-4 px-4 py-3 rounded-xl font-medium transition-colors cursor-pointer ${
+                      isLocalTestMode 
+                        ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20' 
+                        : 'text-gray-400 hover:bg-dark-800 hover:text-white'
+                    }`}
+                    title="Activer/Désactiver le bac à sable local"
+                  >
+                    <TestTube size={20} />
+                    {isLocalTestMode ? 'Mode Test (Actif)' : 'Mode Test Isolé'}
+                  </button>
+                </>
               )}
             </>
           )}

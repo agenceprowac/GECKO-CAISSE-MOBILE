@@ -88,6 +88,10 @@ interface POSState {
   notification: { type: 'success' | 'alert' | 'error' | 'confirm'; message: string; onConfirm?: () => void } | null;
   showNotification: (type: 'success' | 'alert' | 'error' | 'confirm', message: string, onConfirm?: () => void) => void;
   hideNotification: () => void;
+
+  // Local Testing Environment
+  isLocalTestMode: boolean;
+  toggleTestMode: () => void;
 }
 
 // Helper local storage key
@@ -186,6 +190,15 @@ export const usePOSStore = create<POSState>((set, get) => {
     isAuthenticatingSuperAdmin: false,
     setAuthenticatingSuperAdmin: (val) => set({ isAuthenticatingSuperAdmin: val }),
     impersonatedFromSuperAdmin: false,
+    isLocalTestMode: false,
+    toggleTestMode: () => set(state => {
+      const newMode = !state.isLocalTestMode;
+      get().showNotification(
+        newMode ? 'alert' : 'success', 
+        newMode ? 'MODE TEST ISOLÉ ACTIVÉ : Aucune donnée ne sera synchronisée vers le cloud.' : 'MODE TEST DÉSACTIVÉ : Synchronisation cloud rétablie.'
+      );
+      return { isLocalTestMode: newMode };
+    }),
 
     getStockHistoryByTenant: () => {
       const tenantId = get().currentTenant?.id;
@@ -213,11 +226,14 @@ export const usePOSStore = create<POSState>((set, get) => {
     setOnlineStatus: (status) => set({ isOnline: status }),
 
     syncSalesWithServer: async () => {
+      const state = get();
+      if (state.isLocalTestMode) return; // Bloque la synchro en mode bac à sable
       await get().syncCloudData();
     },
 
     syncCloudData: async (tenantIdOverride) => {
       const state = get();
+      if (state.isLocalTestMode) return; // Bloque la synchro en mode bac à sable
       if (state.isSyncing) return; // Empêche les exécutions parallèles qui causent des écrasements
 
       const tenantId = tenantIdOverride || state.currentTenant?.id;
