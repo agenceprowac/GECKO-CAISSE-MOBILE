@@ -64,14 +64,7 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({ onClose }) => {
         isAvailable
       });
     } else {
-      // Restriction de plan Standard : Limite à 15 produits
-      if (currentTenant?.plan === 'STANDARD' && products.length >= 15) {
-        showNotification(
-          'alert', 
-          `Limite de 15 produits atteinte pour le Plan Standard de "${currentTenant.establishmentName}". Veuillez passer à un plan supérieur.`
-        );
-        return;
-      }
+
 
       addProduct({
         name: newName,

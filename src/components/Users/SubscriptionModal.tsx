@@ -7,13 +7,15 @@ interface SubscriptionModalProps {
   onClose: () => void;
 }
 
+const commonFeatures = ['Produits illimités', 'Gestion complète des tables', 'Rapports & Statistiques', 'Support technique inclus'];
+
 const plans = [
   {
     id: 'TRIAL',
     name: 'Essai Gratuit',
     durationMonths: 0.5, // 2 weeks
     price: 0,
-    features: ['Accès complet à la caisse', 'Configuration des articles', 'Support communautaire'],
+    features: commonFeatures,
     icon: <Zap size={24} className="text-gray-400" />,
     color: 'border-gray-500/50 bg-gray-500/10'
   },
@@ -23,7 +25,7 @@ const plans = [
     durationMonths: 3,
     price: 25000,
     monthlyEquivalent: 8333,
-    features: ['Toutes fonctionnalités de base', 'Accès jusqu\'à 15 produits', 'Support par email'],
+    features: commonFeatures,
     icon: <Shield size={24} className="text-blue-400" />,
     color: 'border-blue-500/50 bg-blue-500/10'
   },
@@ -33,7 +35,7 @@ const plans = [
     durationMonths: 6,
     price: 45000,
     monthlyEquivalent: 7500,
-    features: ['Produits illimités', 'Gestion des tables', 'Statistiques avancées', 'Support prioritaire'],
+    features: commonFeatures,
     icon: <Sparkles size={24} className="text-purple-400" />,
     color: 'border-purple-500/50 bg-purple-500/10'
   },
@@ -43,7 +45,7 @@ const plans = [
     durationMonths: 12,
     price: 75000,
     monthlyEquivalent: 6250,
-    features: ['Tout ce qui est inclus dans Premium', 'Multi-utilisateurs illimité', 'Sauvegardes premium', 'Accompagnement VIP'],
+    features: commonFeatures,
     icon: <Sparkles size={24} className="text-yellow-400" />,
     color: 'border-yellow-500/50 bg-yellow-500/10',
     recommended: true
