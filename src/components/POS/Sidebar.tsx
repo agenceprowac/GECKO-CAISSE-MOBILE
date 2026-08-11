@@ -1,6 +1,7 @@
 import React from 'react';
-import { X, LayoutDashboard, FileText, LogOut, Coffee, PackagePlus, Users, LayoutGrid, User, Tag, TestTube } from 'lucide-react';
+import { X, LayoutDashboard, FileText, LogOut, PackagePlus, Users, LayoutGrid, User, Tag, TestTube } from 'lucide-react';
 import { usePOSStore } from '../../store';
+import { GeckoLogo } from '../common/GeckoLogo';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -60,7 +61,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="h-20 flex flex-col justify-center px-6 border-b border-dark-700 bg-dark-800 shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Coffee className="text-primary" size={24} />
+              <GeckoLogo size={28} iconOnly />
               <h2 className="text-xl font-bold bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">
                 {currentTenant?.establishmentName || 'BarPOS'}
               </h2>

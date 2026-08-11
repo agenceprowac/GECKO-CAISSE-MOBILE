@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { usePOSStore } from '../../store';
-import { Coffee, Mail, Building, Key, PlusCircle, LogIn, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Mail, Building, Key, PlusCircle, LogIn, ArrowRight, ArrowLeft } from 'lucide-react';
+import { GeckoLogo } from '../common/GeckoLogo';
 
 export const TenantAuth: React.FC = () => {
   const { registerTenant, loginTenant, showNotification, setHasEnteredApp } = usePOSStore();
@@ -87,8 +88,8 @@ export const TenantAuth: React.FC = () => {
         </button>
 
         <div className="flex flex-col items-center mb-8 mt-4">
-          <div className="w-14 h-14 bg-gradient-to-tr from-primary to-purple-600 rounded-2xl flex items-center justify-center text-white mb-4 shadow-lg shadow-primary/20">
-            <Coffee size={32} />
+          <div className="w-20 h-20 bg-gradient-to-tr from-primary to-purple-600 rounded-3xl flex items-center justify-center mb-4 shadow-lg shadow-primary/20">
+            <GeckoLogo size={48} iconOnly />
           </div>
           <h2 className="text-2xl sm:text-3xl font-black text-center bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
             {mode === 'LOGIN' ? 'Accéder à votre Espace' : 'Créer un Espace Gecko'}
