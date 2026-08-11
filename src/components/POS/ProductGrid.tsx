@@ -87,7 +87,7 @@ export const ProductGrid: React.FC = () => {
                   <span className="text-left font-semibold text-white leading-tight pl-2">
                     {product.name}
                   </span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${
+                  <span className={`text-sm font-bold px-2.5 py-1 rounded-full ${
                     product.stock > 10 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
                   }`}>
                     {product.stock}
