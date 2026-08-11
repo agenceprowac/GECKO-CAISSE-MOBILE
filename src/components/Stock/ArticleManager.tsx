@@ -167,7 +167,7 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({ onClose }) => {
                 className={`px-4 py-3 rounded-xl font-bold transition-colors flex items-center justify-center gap-2 shrink-0 ${isManagingCategories ? 'bg-primary text-white' : 'bg-dark-800 text-gray-300 hover:bg-dark-700 border border-dark-700'}`}
               >
                 <Tag size={20} />
-                <span className="hidden sm:inline">{isManagingCategories ? 'Retour Articles' : 'Gérer les Catégories'}</span>
+                <span className="inline">{isManagingCategories ? 'Retour Articles' : 'Gérer les Catégories'}</span>
               </button>
 
               {!isManagingCategories && (
