@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { usePOSStore } from '../../store';
 import { User, DollarSign, ShoppingBag, CreditCard, Banknote, Smartphone, Clock, ShieldAlert, QrCode, Upload, X } from 'lucide-react';
+import { SubscriptionModal } from './SubscriptionModal';
 
 export const ProfilePage: React.FC = () => {
   const currentUser = usePOSStore(state => state.currentUser);
@@ -10,6 +11,8 @@ export const ProfilePage: React.FC = () => {
   const updateTenantQrCode = usePOSStore(state => state.updateTenantQrCode);
   const getSalesByTenant = usePOSStore(state => state.getSalesByTenant);
   const sales = getSalesByTenant();
+  
+  const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
 
   // Obtenir les limites de la journée en cours
   const now = new Date();
@@ -248,9 +251,7 @@ export const ProfilePage: React.FC = () => {
 
             <div className="flex justify-start border-b border-red-500/10 pb-6 mb-2">
               <button
-                onClick={() => {
-                  showNotification('alert', 'Votre demande de réabonnement/mise à niveau a été transmise à notre équipe.');
-                }}
+                onClick={() => setIsSubscriptionModalOpen(true)}
                 className="px-6 py-3 bg-gradient-to-r from-primary to-purple-600 text-white rounded-xl font-bold hover:opacity-90 transition-opacity shadow-lg"
               >
                 Renouveler mon abonnement / Mettre à niveau
@@ -279,6 +280,7 @@ export const ProfilePage: React.FC = () => {
         )}
 
       </div>
+      <SubscriptionModal isOpen={isSubscriptionModalOpen} onClose={() => setIsSubscriptionModalOpen(false)} />
     </div>
   );
 };

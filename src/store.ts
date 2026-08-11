@@ -673,8 +673,8 @@ export const usePOSStore = create<POSState>((set, get) => {
     updateTenantSubscription: async (tenantId, plan, status, endDate) => {
       const state = get();
 
-      // Mettre à jour sur le Cloud si en ligne
-      if (state.isOnline) {
+      // Mettre à jour sur le Cloud si en ligne et mode test désactivé
+      if (state.isOnline && !state.isLocalTestMode) {
         try {
           await fetch('/api/tenants', {
             method: 'POST',
@@ -695,6 +695,18 @@ export const usePOSStore = create<POSState>((set, get) => {
 
       set({ tenants: updatedTenants });
       persist({ tenants: updatedTenants });
+
+      // Mettre à jour currentTenant s'il s'agit du tenant actuellement connecté
+      if (state.currentTenant?.id === tenantId) {
+        set({ 
+          currentTenant: { 
+            ...state.currentTenant, 
+            plan, 
+            status, 
+            subscriptionEndDate: endDate ?? state.currentTenant.subscriptionEndDate 
+          } 
+        });
+      }
     },
 
     updateTenantQrCode: async (tenantId, qrCodeBase64) => {
