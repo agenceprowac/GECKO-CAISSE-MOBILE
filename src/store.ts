@@ -875,12 +875,14 @@ export const usePOSStore = create<POSState>((set, get) => {
       const updatedTables = [...get().tables, { id: 'tbl_' + crypto.randomUUID(), name, tenantId }];
       set({ tables: updatedTables, hasUnsyncedTablesChanges: true });
       persist({ tables: updatedTables });
+      get().syncCloudData().catch(console.error);
     },
 
     updateTable: (updatedTable) => {
-      const updatedTables = get().tables.map(t => t.id === updatedTable.id ? updatedTable : t);
+      const updatedTables = get().tables.map(t => t.id === updatedTable.id ? { ...t, ...updatedTable } : t);
       set({ tables: updatedTables, hasUnsyncedTablesChanges: true });
       persist({ tables: updatedTables });
+      get().syncCloudData().catch(console.error);
     },
 
     deleteTable: (tableId) => {
