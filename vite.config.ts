@@ -15,7 +15,7 @@ export default defineConfig({
             const url = new URL(req.url, `http://${req.headers.host}`);
             const apiName = url.pathname.replace(/^\/api\//, '');
             
-            const filePath = path.resolve(__dirname, `api/${apiName}.ts`);
+            const filePath = path.resolve(process.cwd(), `api/${apiName}.ts`);
             
             try {
               // Charger dynamiquement le fichier API TypeScript avec Vite
@@ -66,7 +66,7 @@ export default defineConfig({
               try {
                 const fs = await import('fs');
                 fs.writeFileSync(
-                  path.resolve(__dirname, 'api_error.log'),
+                  path.resolve(process.cwd(), 'api_error.log'),
                   `[${new Date().toISOString()}] Erreur sur /api/${apiName}:\n${err.message}\n${err.stack}\n\n`,
                   { flag: 'a' }
                 );

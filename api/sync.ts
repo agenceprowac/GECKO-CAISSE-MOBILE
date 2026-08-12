@@ -22,6 +22,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const { tenantId, localSales, localProducts, localTables, localUsers, localStockHistory, localCategories } = req.body;
 
+  try {
+    const fs = await import('fs');
+    fs.appendFileSync(
+      'api_debug.log',
+      `[${new Date().toISOString()}] Sync call: localTables=${JSON.stringify(localTables)}\n`
+    );
+  } catch (err) {}
+
   if (!tenantId) {
     return res.status(400).json({ error: 'ID de l\'établissement requis pour la synchronisation.' });
   }
