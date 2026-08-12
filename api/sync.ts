@@ -103,8 +103,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // 2. Synchroniser les tables locales (uniquement si envoyé par le client)
     if (localTables !== undefined && Array.isArray(localTables)) {
-      // On désactive la suppression brute pour éviter les plantages sur contraintes SQL
-      // if (localTables.length > 0) { ... }
+      const localTableIds = localTables.map(t => t.id);
+
+      // Supprimer les commandes associées aux tables supprimées pour éviter les violations de clés étrangères
+      await prisma.order.deleteMany({
+        where: {
+          tenantId: tenantId,
+          tableId: { notIn: localTableIds }
+        }
+      });
+
+      // Supprimer les tables qui ne sont plus dans la liste locale
+      await prisma.table.deleteMany({
+        where: {
+          tenantId: tenantId,
+          id: { notIn: localTableIds }
+        }
+      });
 
       for (const tbl of localTables) {
         await prisma.table.upsert({

@@ -77,6 +77,7 @@ interface POSState {
   // Cart / Orders
   cart: OrderItem[];
   currentTable: Table | null;
+  tableCarts: Record<string, OrderItem[]>;
   addToCart: (product: Product) => void;
   removeFromCart: (itemId: string) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
@@ -105,6 +106,8 @@ const loadPersistedData = () => {
       const parsed = JSON.parse(saved);
       // S'assurer que le tableau stockHistory existe s'il n'a pas été sauvegardé auparavant
       if (!parsed.stockHistory) parsed.stockHistory = [];
+      if (!parsed.tableCarts) parsed.tableCarts = {};
+      if (!parsed.cart) parsed.cart = [];
       return parsed;
     }
   } catch (e) {
@@ -173,6 +176,9 @@ export const usePOSStore = create<POSState>((set, get) => {
       hasUnsyncedTablesChanges: updates.hasUnsyncedTablesChanges !== undefined ? updates.hasUnsyncedTablesChanges : state.hasUnsyncedTablesChanges,
       hasUnsyncedUsersChanges: updates.hasUnsyncedUsersChanges !== undefined ? updates.hasUnsyncedUsersChanges : state.hasUnsyncedUsersChanges,
       categories: updates.categories !== undefined ? updates.categories : state.categories,
+      tableCarts: updates.tableCarts !== undefined ? updates.tableCarts : state.tableCarts,
+      cart: updates.cart !== undefined ? updates.cart : state.cart,
+      currentTable: updates.currentTable !== undefined ? updates.currentTable : state.currentTable,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
   };
@@ -206,9 +212,10 @@ export const usePOSStore = create<POSState>((set, get) => {
     },
     
     currentUser: null,
-    cart: [],
-    currentTable: null,
-    total: 0,
+    tableCarts: persistedData.tableCarts || {},
+    cart: persistedData.cart || [],
+    currentTable: persistedData.currentTable || null,
+    total: (persistedData.cart || []).reduce((sum: number, item: any) => sum + item.product.price * item.quantity, 0),
     notification: null,
     
     deferredPrompt: null,
@@ -245,12 +252,12 @@ export const usePOSStore = create<POSState>((set, get) => {
       set({ isSyncing: true });
 
       try {
-        // Filtrer les données locales appartenant à ce tenant
-        const unsyncedSales = state.sales.filter(s => s.tenantId === tenantId && !s.synced);
+        // Filtrer les données locales appartenant à ce tenant (exclure le mode test)
+        const unsyncedSales = state.sales.filter(s => s.tenantId === tenantId && !s.synced && !s.isTest);
         const tenantProducts = state.products.filter(p => p.tenantId === tenantId);
         const tenantTables = state.tables.filter(t => t.tenantId === tenantId);
         const tenantUsers = state.users.filter(u => u.tenantId === tenantId);
-        const tenantStockHistory = state.stockHistory.filter(h => h.tenantId === tenantId);
+        const tenantStockHistory = state.stockHistory.filter(h => h.tenantId === tenantId && !h.isTest);
 
         const headers: Record<string, string> = {
           'Content-Type': 'application/json'
@@ -814,6 +821,7 @@ export const usePOSStore = create<POSState>((set, get) => {
       });
       const formattedDate = `Le ${formatter.format(now).replace(',', ' à')}`;
 
+      const isTest = get().isLocalTestMode;
       const newHistoryEntry: StockHistoryEntry = {
         id: 'stk_' + crypto.randomUUID(),
         productId,
@@ -822,7 +830,8 @@ export const usePOSStore = create<POSState>((set, get) => {
         userLabel: get().currentUser?.name || 'Administrateur',
         createdAt: formattedDate,
         tenantId: product.tenantId,
-        rawDate: now.toISOString()
+        rawDate: now.toISOString(),
+        isTest
       };
 
       const updatedHistory = [newHistoryEntry, ...get().stockHistory];
@@ -830,7 +839,7 @@ export const usePOSStore = create<POSState>((set, get) => {
       set({ 
         products: updatedProducts,
         stockHistory: updatedHistory,
-        hasUnsyncedProductsChanges: true
+        hasUnsyncedProductsChanges: isTest ? get().hasUnsyncedProductsChanges : true
       });
 
       persist({ 
@@ -930,6 +939,7 @@ export const usePOSStore = create<POSState>((set, get) => {
       });
       const formattedDate = `Le ${formatter.format(now).replace(',', ' à')}`;
       const tenantId = get().currentTenant?.id;
+      const isTest = get().isLocalTestMode;
       
       const updatedSales = [
         {
@@ -938,6 +948,7 @@ export const usePOSStore = create<POSState>((set, get) => {
           createdAt: formattedDate,
           tenantId,
           synced: false,
+          isTest,
           rawDate: now.toISOString()
         },
         ...get().sales
@@ -971,36 +982,73 @@ export const usePOSStore = create<POSState>((set, get) => {
         newCart = [...state.cart, { id: crypto.randomUUID(), product, quantity: 1 }];
       }
       const newTotal = newCart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-      return { cart: newCart, total: newTotal };
+      
+      const tableKey = state.currentTable ? state.currentTable.id : 'direct';
+      const updatedTableCarts = {
+        ...state.tableCarts,
+        [tableKey]: newCart
+      };
+
+      persist({ cart: newCart, tableCarts: updatedTableCarts });
+      return { cart: newCart, total: newTotal, tableCarts: updatedTableCarts };
     }),
     
     removeFromCart: (itemId) => set((state) => {
       const newCart = state.cart.filter(item => item.id !== itemId);
       const newTotal = newCart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-      return { cart: newCart, total: newTotal };
+      
+      const tableKey = state.currentTable ? state.currentTable.id : 'direct';
+      const updatedTableCarts = {
+        ...state.tableCarts,
+        [tableKey]: newCart
+      };
+
+      persist({ cart: newCart, tableCarts: updatedTableCarts });
+      return { cart: newCart, total: newTotal, tableCarts: updatedTableCarts };
     }),
     
     updateQuantity: (itemId, quantity) => set((state) => {
+      let newCart;
       if (quantity <= 0) {
-        const newCart = state.cart.filter(item => item.id !== itemId);
-        const newTotal = newCart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-        return { cart: newCart, total: newTotal };
+        newCart = state.cart.filter(item => item.id !== itemId);
+      } else {
+        const itemToUpdate = state.cart.find(item => item.id === itemId);
+        if (itemToUpdate && quantity > itemToUpdate.product.stock) {
+          return state; // Empêcher de dépasser le stock
+        }
+        newCart = state.cart.map(item =>
+          item.id === itemId ? { ...item, quantity } : item
+        );
       }
-
-      const itemToUpdate = state.cart.find(item => item.id === itemId);
-      if (itemToUpdate && quantity > itemToUpdate.product.stock) {
-        return state; // Empêcher de dépasser le stock
-      }
-
-      const newCart = state.cart.map(item =>
-        item.id === itemId ? { ...item, quantity } : item
-      );
       const newTotal = newCart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-      return { cart: newCart, total: newTotal };
+      
+      const tableKey = state.currentTable ? state.currentTable.id : 'direct';
+      const updatedTableCarts = {
+        ...state.tableCarts,
+        [tableKey]: newCart
+      };
+
+      persist({ cart: newCart, tableCarts: updatedTableCarts });
+      return { cart: newCart, total: newTotal, tableCarts: updatedTableCarts };
     }),
     
-    clearCart: () => set({ cart: [], total: 0 }),
+    clearCart: () => set((state) => {
+      const tableKey = state.currentTable ? state.currentTable.id : 'direct';
+      const updatedTableCarts = {
+        ...state.tableCarts,
+        [tableKey]: []
+      };
+      persist({ cart: [], tableCarts: updatedTableCarts });
+      return { cart: [], total: 0, tableCarts: updatedTableCarts };
+    }),
     
-    setTable: (table) => set({ currentTable: table }),
+    setTable: (table) => set((state) => {
+      const tableKey = table ? table.id : 'direct';
+      const loadedCart = state.tableCarts[tableKey] || [];
+      const newTotal = loadedCart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+      
+      persist({ currentTable: table, cart: loadedCart });
+      return { currentTable: table, cart: loadedCart, total: newTotal };
+    }),
   };
 });

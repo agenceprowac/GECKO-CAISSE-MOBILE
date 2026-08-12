@@ -66,6 +66,7 @@ export type Sale = {
   tenantId?: string;
   synced: boolean;
   rawDate: string; // ISO String (ex: "2026-08-04T02:05:00.000Z")
+  isTest?: boolean;
 };
 export type StockHistoryEntry = {
   id: string;
@@ -76,4 +77,5 @@ export type StockHistoryEntry = {
   createdAt: string; // "DD/MM/YYYY à HH:mm"
   tenantId?: string;
   rawDate?: string; // ISO String pour le tri et le filtrage
+  isTest?: boolean;
 };
