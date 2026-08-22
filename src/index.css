@@ -45,7 +45,8 @@ html.light {
   p, span, label, input, select, textarea,
   .font-bold {
     /* Si l'élément n'a pas une classe de couleur de fond vive comme un badge ou un bouton primaire */
-    &:not(.bg-primary):not(.bg-red-600):not(.bg-green-600):not(.bg-blue-600):not(.bg-purple-600):not(.bg-yellow-500):not(.bg-gradient-to-r) {
+    /* Et s'il n'a pas une classe de couleur de texte spécifique (vert, rouge, bleu, orange, etc.) */
+    &:not(.bg-primary):not(.bg-red-600):not(.bg-green-600):not(.bg-blue-600):not(.bg-purple-600):not(.bg-yellow-500):not(.bg-gradient-to-r):not([class*="text-green-"]):not([class*="text-red-"]):not([class*="text-orange-"]):not([class*="text-blue-"]):not([class*="text-purple-"]):not([class*="text-primary"]):not(.text-green-400):not(.text-red-400) {
       color: #111827 !important;
     }
   }
