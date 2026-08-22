@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { X, PackagePlus, Plus, Minus, Check, Clock, ListFilter } from 'lucide-react';
+import { X, PackagePlus, Plus, Search, Edit2, Check } from 'lucide-react';
 import { usePOSStore } from '../../store';
+import type { Product } from '../../types';
 
 interface StockManagerProps {
   onClose: () => void;
@@ -10,20 +11,39 @@ export const StockManager: React.FC<StockManagerProps> = ({ onClose }) => {
   const { 
     getProductsByTenant, 
     getStockHistoryByTenant, 
-    updateStock 
+    updateStock,
+    updateStockHistoryEntry
   } = usePOSStore();
 
   const products = getProductsByTenant();
   const stockHistory = getStockHistoryByTenant();
 
-  const [activeTab, setActiveTab] = useState<'INVENTORY' | 'HISTORY'>('INVENTORY');
-  const [search, setSearch] = useState('');
-  const [period, setPeriod] = useState<'TODAY' | 'WEEK' | 'MONTH' | 'ALL'>('TODAY');
+  // États pour les modales et la recherche
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [period, setPeriod] = useState<'TODAY' | 'WEEK' | 'MONTH' | 'CUSTOM' | 'ALL'>('ALL');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
   
-  // Dictionnaire pour gérer la quantité saisie manuellement pour chaque produit
-  const [manualInputs, setManualInputs] = useState<{ [productId: string]: string }>({});
+  // États pour la création d'une nouvelle entrée
+  const [searchProductQuery, setSearchProductQuery] = useState('');
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [quantityInput, setQuantityInput] = useState('');
 
-  const filteredProducts = products.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
+  // États pour la modification d'une entrée existante
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
+  const [editSearchProductQuery, setEditSearchProductQuery] = useState('');
+  const [editSelectedProduct, setEditSelectedProduct] = useState<Product | null>(null);
+  const [editQuantityInput, setEditQuantityInput] = useState('');
+
+  // Filtrage des produits pour la recherche dans les modales
+  const filteredProductsForAdd = products.filter(p => 
+    p.name.toLowerCase().includes(searchProductQuery.toLowerCase())
+  );
+
+  const filteredProductsForEdit = products.filter(p => 
+    p.name.toLowerCase().includes(editSearchProductQuery.toLowerCase())
+  );
 
   // Parser la date d'un mouvement
   const parseEntryDate = (entry: any) => {
@@ -36,7 +56,9 @@ export const StockManager: React.FC<StockManagerProps> = ({ onClose }) => {
     return new Date();
   };
 
+  // Filtrer par période et s'assurer que quantityAdded > 0
   const filteredHistory = stockHistory.filter(entry => {
+    if (entry.quantityAdded <= 0) return false;
     if (period === 'ALL') return true;
     
     const entryDate = parseEntryDate(entry);
@@ -58,35 +80,70 @@ export const StockManager: React.FC<StockManagerProps> = ({ onClose }) => {
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       return entryDate >= startOfMonth;
     }
+
+    if (period === 'CUSTOM') {
+      if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        if (entryDate < start) return false;
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        if (entryDate > end) return false;
+      }
+      return true;
+    }
     
     return true;
   });
 
-  const handleStockAdjust = (productId: string, quantity: number) => {
-    updateStock(productId, quantity);
-  };
-
-  const handleManualSubmit = (e: React.FormEvent, productId: string) => {
+  // Soumission d'une nouvelle entrée
+  const handleAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const valueStr = manualInputs[productId];
-    if (!valueStr) return;
-    
-    const value = parseInt(valueStr, 10);
-    if (isNaN(value) || value === 0) return;
+    if (!selectedProduct) return;
+    const qty = parseInt(quantityInput, 10);
+    if (isNaN(qty) || qty === 0) return;
 
-    handleStockAdjust(productId, value);
+    updateStock(selectedProduct.id, qty);
     
-    // Réinitialiser le champ de saisie de ce produit
-    setManualInputs(prev => ({ ...prev, [productId]: '' }));
+    // Réinitialisation
+    setSelectedProduct(null);
+    setQuantityInput('');
+    setSearchProductQuery('');
+    setShowAddModal(false);
   };
 
-  const handleInputChange = (productId: string, value: string) => {
-    setManualInputs(prev => ({ ...prev, [productId]: value }));
+  // Ouverture de la modale de modification avec les valeurs actuelles
+  const openEditModal = (entry: any) => {
+    const product = products.find(p => p.id === entry.productId) || null;
+    setEditingEntryId(entry.id);
+    setEditSelectedProduct(product);
+    setEditQuantityInput(entry.quantityAdded.toString());
+    setEditSearchProductQuery(product ? product.name : '');
+    setShowEditModal(true);
+  };
+
+  // Soumission de la modification
+  const handleEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingEntryId || !editSelectedProduct) return;
+    const qty = parseInt(editQuantityInput, 10);
+    if (isNaN(qty) || qty === 0) return;
+
+    updateStockHistoryEntry(editingEntryId, editSelectedProduct.id, qty);
+
+    // Réinitialisation
+    setEditingEntryId(null);
+    setEditSelectedProduct(null);
+    setEditQuantityInput('');
+    setEditSearchProductQuery('');
+    setShowEditModal(false);
   };
 
   return (
     <div className="fixed inset-0 bg-black/80 flex justify-center items-center z-50 p-4 overflow-y-auto">
-      <div className="bg-dark-800 rounded-3xl w-full max-w-2xl flex flex-col h-[85vh] shadow-2xl">
+      <div className="bg-dark-800 rounded-3xl w-full max-w-3xl flex flex-col h-[85vh] shadow-2xl relative">
         
         {/* Header */}
         <div className="flex justify-between items-center p-6 border-b border-dark-700 bg-dark-900 rounded-t-3xl shrink-0">
@@ -94,187 +151,331 @@ export const StockManager: React.FC<StockManagerProps> = ({ onClose }) => {
             <PackagePlus size={28} className="text-primary" />
             <h2 className="text-2xl font-bold">Gestion des Stocks & Inventaire</h2>
           </div>
-          <button onClick={onClose} className="p-2 bg-dark-800 rounded-full text-gray-400 hover:text-white">
+          <button onClick={onClose} className="p-2 bg-dark-800 rounded-full text-gray-400 hover:text-white cursor-pointer">
             <X size={24} />
           </button>
         </div>
 
-        {/* Navigation Tabs */}
-        <div className="flex bg-dark-900 px-6 py-2 border-b border-dark-700 shrink-0 gap-4">
-          <button
-            onClick={() => setActiveTab('INVENTORY')}
-            className={`pb-2 px-1 text-sm font-bold border-b-2 transition-all cursor-pointer ${
-              activeTab === 'INVENTORY' ? 'border-primary text-primary' : 'border-transparent text-gray-400 hover:text-white'
-            }`}
-          >
-            Ajuster l'Inventaire
-          </button>
-          <button
-            onClick={() => setActiveTab('HISTORY')}
-            className={`pb-2 px-1 text-sm font-bold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'HISTORY' ? 'border-primary text-primary' : 'border-transparent text-gray-400 hover:text-white'
-            }`}
-          >
-            <Clock size={16} />
-            Historique des Mouvements
-          </button>
-        </div>
-        
-        {activeTab === 'INVENTORY' ? (
-          /* TAB 1: CURRENT INVENTORY & ADJUSTMENTS */
-          <>
-            <div className="p-4 border-b border-dark-700 bg-dark-900 shrink-0">
-              <input 
-                type="text" 
-                placeholder="Rechercher un produit..." 
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full px-4 py-3 bg-dark-800 border border-dark-700 rounded-xl focus:outline-none focus:border-primary transition-colors text-white"
-              />
-            </div>
+        {/* Barre d'action principale */}
+        <div className="flex flex-col md:flex-row items-center justify-between p-6 bg-dark-900 border-b border-dark-700 gap-4 shrink-0">
+          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+            <select
+              value={period}
+              onChange={(e) => setPeriod(e.target.value as any)}
+              className="px-4 py-2.5 bg-dark-800 border border-dark-700 rounded-xl focus:outline-none focus:border-primary transition-colors text-white font-medium text-sm"
+            >
+              <option value="ALL">Toutes les périodes</option>
+              <option value="TODAY">Aujourd'hui</option>
+              <option value="WEEK">Cette Semaine</option>
+              <option value="MONTH">Ce Mois</option>
+              <option value="CUSTOM">Période personnalisée</option>
+            </select>
 
-            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
-              {filteredProducts.map(product => (
-                <div key={product.id} className="flex flex-col bg-dark-900 border border-dark-700 rounded-2xl p-4 gap-4 shadow-md">
-                  
-                  {/* Produit Info */}
-                  <div className="flex items-center gap-4">
-                    {product.image ? (
-                      <img src={product.image} alt={product.name} className="w-14 h-14 rounded-xl object-cover border border-dark-700" />
-                    ) : (
-                      <div className="w-14 h-14 bg-dark-800 rounded-xl border border-dark-700 flex items-center justify-center text-gray-500 font-bold">
-                        N/A
-                      </div>
-                    )}
-                    <div className="flex-1">
-                      <p className="font-bold text-white text-lg">{product.name}</p>
-                      <p className={`text-sm mt-1 font-semibold ${product.stock > 10 ? 'text-green-400' : 'text-red-400'}`}>
-                        Stock actuel : {product.stock}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-dark-800 pt-3">
-                    
-                    {/* Saisie Manuelle de la quantité */}
-                    <form 
-                      onSubmit={(e) => handleManualSubmit(e, product.id)}
-                      className="flex items-center gap-2"
-                    >
-                      <span className="text-xs text-gray-400 whitespace-nowrap">Saisie manuelle :</span>
-                      <input 
-                        type="number" 
-                        placeholder="+/- Quantité" 
-                        value={manualInputs[product.id] || ''}
-                        onChange={(e) => handleInputChange(product.id, e.target.value)}
-                        className="w-24 px-2.5 py-1.5 bg-dark-800 border border-dark-700 rounded-xl text-center text-xs font-semibold text-white focus:outline-none focus:border-primary"
-                      />
-                      <button
-                        type="submit"
-                        className="px-3 py-1.5 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary/90 transition-all flex items-center gap-1 cursor-pointer"
-                        title="Valider la quantité saisie"
-                      >
-                        <Check size={12} />
-                        OK
-                      </button>
-                    </form>
-
-                    {/* Ajustement rapide */}
-                    <div className="flex items-center gap-2 justify-end">
-                      <span className="text-xs text-gray-400 mr-1 hidden sm:inline">Ajuster de :</span>
-                      <button 
-                        onClick={() => handleStockAdjust(product.id, -1)}
-                        className="w-9 h-9 rounded-xl bg-dark-800 flex items-center justify-center text-red-400 hover:bg-dark-700 transition-colors active:scale-95 shrink-0 cursor-pointer"
-                        title="Retirer 1"
-                      >
-                        <Minus size={16} />
-                      </button>
-                      <button 
-                        onClick={() => handleStockAdjust(product.id, 1)}
-                        className="w-9 h-9 rounded-xl bg-dark-800 flex items-center justify-center text-green-400 hover:bg-dark-700 transition-colors active:scale-95 shrink-0 cursor-pointer"
-                        title="Ajouter 1"
-                      >
-                        <Plus size={16} />
-                      </button>
-                      <button 
-                        onClick={() => handleStockAdjust(product.id, 10)}
-                        className="px-2.5 h-9 rounded-xl bg-primary/20 text-primary text-xs font-bold hover:bg-primary/30 transition-colors active:scale-95 shrink-0 cursor-pointer"
-                      >
-                        +10
-                      </button>
-                      <button 
-                        onClick={() => handleStockAdjust(product.id, 24)}
-                        className="px-2.5 h-9 rounded-xl bg-primary/20 text-primary text-xs font-bold hover:bg-primary/30 transition-colors active:scale-95 shrink-0 cursor-pointer"
-                      >
-                        +24
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {filteredProducts.length === 0 && (
-                <div className="text-center text-gray-500 py-10">Aucun produit trouvé.</div>
-              )}
-            </div>
-          </>
-        ) : (
-          /* TAB 2: INVENTORY HISTORY LOG */
-          <>
-            {/* Filter */}
-            <div className="p-4 border-b border-dark-700 bg-dark-900 shrink-0">
-              <select
-                value={period}
-                onChange={(e) => setPeriod(e.target.value as any)}
-                className="w-full px-4 py-3 bg-dark-800 border border-dark-700 rounded-xl focus:outline-none focus:border-primary transition-colors text-white font-medium"
-              >
-                <option value="TODAY">Aujourd'hui</option>
-                <option value="WEEK">Cette Semaine</option>
-                <option value="MONTH">Ce Mois</option>
-                <option value="ALL">Tout l'historique</option>
-              </select>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
-              {filteredHistory.length === 0 ? (
-              <div className="text-center text-gray-500 py-12 flex-1 flex flex-col items-center justify-center gap-2">
-                <ListFilter size={40} className="text-gray-600" />
-                <p className="font-semibold text-sm">Aucun mouvement de stock enregistré.</p>
-                <p className="text-xs text-gray-600 max-w-xs leading-relaxed">
-                  Les modifications de quantité d'articles s'afficheront ici en temps réel.
-                </p>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {filteredHistory
-                  .sort((a, b) => new Date(b.rawDate || 0).getTime() - new Date(a.rawDate || 0).getTime())
-                  .map(entry => (
-                  <div 
-                    key={entry.id} 
-                    className="p-4 bg-dark-900 border border-dark-700 rounded-2xl flex items-center justify-between gap-4 text-xs shadow-md"
-                  >
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-white text-sm">{entry.productName}</span>
-                        <span className="text-[9px] bg-dark-800 text-gray-400 px-2 py-0.5 rounded font-semibold border border-dark-700">
-                          Auteur : {entry.userLabel}
-                        </span>
-                      </div>
-                      <p className="text-gray-500 font-medium">{entry.createdAt}</p>
-                    </div>
-                    
-                    <span className={`text-base font-black shrink-0 ${
-                      entry.quantityAdded >= 0 ? 'text-green-400' : 'text-red-400'
-                    }`}>
-                      {entry.quantityAdded >= 0 ? `+${entry.quantityAdded}` : entry.quantityAdded}
-                    </span>
-                  </div>
-                ))}
+            {period === 'CUSTOM' && (
+              <div className="flex items-center gap-2 animate-fadeIn">
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="px-3 py-2 bg-dark-800 border border-dark-700 rounded-xl text-xs text-white focus:outline-none focus:border-primary"
+                  title="Date de début"
+                />
+                <span className="text-gray-500 text-xs">à</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="px-3 py-2 bg-dark-800 border border-dark-700 rounded-xl text-xs text-white focus:outline-none focus:border-primary"
+                  title="Date de fin"
+                />
               </div>
             )}
           </div>
-        </>
-      )}
+          <button
+            onClick={() => {
+              setSelectedProduct(null);
+              setQuantityInput('');
+              setSearchProductQuery('');
+              setShowAddModal(true);
+            }}
+            className="w-full sm:w-auto px-5 py-3 bg-primary text-white rounded-xl text-sm font-bold hover:bg-primary/95 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-primary/20 active:scale-95 animate-pulse"
+          >
+            <Plus size={18} />
+            Nouvelle Entrée
+          </button>
+        </div>
+
+        {/* Liste des entrées */}
+        <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
+          {filteredHistory.length === 0 ? (
+            <div className="text-center text-gray-500 py-16 flex flex-col items-center justify-center gap-3">
+              <PackagePlus size={48} className="text-gray-600" />
+              <p className="font-semibold text-lg">Aucune entrée de stock pour cette période.</p>
+              <p className="text-sm text-gray-600 max-w-sm leading-relaxed">
+                Ajustez le filtre périodique ou appuyez sur "Nouvelle Entrée" pour ajouter du stock.
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {filteredHistory
+                .sort((a, b) => new Date(b.rawDate || 0).getTime() - new Date(a.rawDate || 0).getTime())
+                .map(entry => (
+                  <div 
+                    key={entry.id} 
+                    className="p-4 bg-dark-900 border border-dark-700 rounded-2xl flex items-center justify-between gap-4 text-sm shadow-md hover:border-dark-600 transition-colors"
+                  >
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-bold text-white text-base">{entry.productName}</span>
+                        <span className="text-[10px] bg-dark-800 text-gray-400 px-2 py-0.5 rounded font-semibold border border-dark-700">
+                          {entry.userLabel}
+                        </span>
+                      </div>
+                      <p className="text-gray-500 text-xs font-medium">{entry.createdAt}</p>
+                    </div>
+                    
+                    <div className="flex items-center gap-4 shrink-0">
+                      <span className={`text-lg font-black ${
+                        entry.quantityAdded >= 0 ? 'text-green-400' : 'text-red-400'
+                      }`}>
+                        {entry.quantityAdded >= 0 ? `+${entry.quantityAdded}` : entry.quantityAdded}
+                      </span>
+                      
+                      <button
+                        onClick={() => openEditModal(entry)}
+                        className="p-2 bg-dark-800 text-gray-400 hover:text-white rounded-xl border border-dark-700 hover:border-gray-500 transition-all cursor-pointer"
+                        title="Modifier cette entrée"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
+
+        {/* MODALE : Nouvelle Entrée */}
+        {showAddModal && (
+          <div className="absolute inset-0 bg-black/90 flex justify-center items-center z-50 p-4 rounded-3xl">
+            <div className="bg-dark-800 border border-dark-700 rounded-2xl w-full max-w-md p-6 flex flex-col max-h-[90%] shadow-2xl">
+              <div className="flex justify-between items-center mb-4 pb-2 border-b border-dark-700">
+                <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                  <Plus size={20} className="text-primary" />
+                  Nouvelle Entrée de Stock
+                </h3>
+                <button 
+                  onClick={() => setShowAddModal(false)}
+                  className="p-1 bg-dark-900 rounded-full text-gray-400 hover:text-white cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <form onSubmit={handleAddSubmit} className="flex flex-col gap-4 flex-1 overflow-y-auto">
+                {/* Recherche d'article */}
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                    Rechercher un Article
+                  </label>
+                  <div className="relative">
+                    <input 
+                      type="text" 
+                      placeholder="Nom de l'article..."
+                      value={searchProductQuery}
+                      onChange={(e) => {
+                        setSearchProductQuery(e.target.value);
+                        setSelectedProduct(null);
+                      }}
+                      className="w-full pl-10 pr-4 py-2.5 bg-dark-950 border border-dark-700 rounded-xl text-sm focus:outline-none focus:border-primary text-white"
+                    />
+                    <Search size={16} className="absolute left-3.5 top-3.5 text-gray-500" />
+                  </div>
+                </div>
+
+                {/* Liste des résultats de recherche */}
+                {!selectedProduct && searchProductQuery.trim() !== '' && (
+                  <div className="bg-dark-950 border border-dark-700 rounded-xl max-h-40 overflow-y-auto flex flex-col divide-y divide-dark-800">
+                    {filteredProductsForAdd.map(product => (
+                      <button
+                        key={product.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedProduct(product);
+                          setSearchProductQuery(product.name);
+                        }}
+                        className="px-4 py-3 text-left text-sm text-gray-300 hover:bg-dark-800 hover:text-white transition-colors flex items-center justify-between"
+                      >
+                        <span className="font-semibold">{product.name}</span>
+                        <span className="text-xs text-gray-500">Stock act: {product.stock}</span>
+                      </button>
+                    ))}
+                    {filteredProductsForAdd.length === 0 && (
+                      <div className="p-3 text-center text-xs text-gray-500">Aucun article trouvé</div>
+                    )}
+                  </div>
+                )}
+
+                {/* Article sélectionné */}
+                {selectedProduct && (
+                  <div className="p-3 bg-primary/10 border border-primary/20 rounded-xl flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-primary font-bold">Article sélectionné :</p>
+                      <p className="text-sm font-semibold text-white">{selectedProduct.name}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedProduct(null);
+                        setSearchProductQuery('');
+                      }}
+                      className="text-xs text-red-400 hover:underline cursor-pointer"
+                    >
+                      Changer
+                    </button>
+                  </div>
+                )}
+
+                {/* Saisie de la Quantité */}
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                    Quantité à Ajouter
+                  </label>
+                  <input 
+                    type="number" 
+                    placeholder="Ex: 10, 24, 50..."
+                    value={quantityInput}
+                    onChange={(e) => setQuantityInput(e.target.value)}
+                    required
+                    className="w-full px-4 py-2.5 bg-dark-950 border border-dark-700 rounded-xl text-sm focus:outline-none focus:border-primary text-white font-semibold"
+                  />
+                </div>
+
+                {/* Validation */}
+                <button
+                  type="submit"
+                  disabled={!selectedProduct || !quantityInput}
+                  className="w-full py-3 mt-2 bg-primary text-white rounded-xl text-sm font-bold hover:bg-primary/95 disabled:bg-gray-600 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-primary/20"
+                >
+                  <Check size={16} />
+                  Valider l'Entrée
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* MODALE : Modifier Entrée */}
+        {showEditModal && (
+          <div className="absolute inset-0 bg-black/90 flex justify-center items-center z-50 p-4 rounded-3xl">
+            <div className="bg-dark-800 border border-dark-700 rounded-2xl w-full max-w-md p-6 flex flex-col max-h-[90%] shadow-2xl">
+              <div className="flex justify-between items-center mb-4 pb-2 border-b border-dark-700">
+                <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                  <Edit2 size={20} className="text-primary" />
+                  Modifier l'Entrée de Stock
+                </h3>
+                <button 
+                  onClick={() => setShowEditModal(false)}
+                  className="p-1 bg-dark-900 rounded-full text-gray-400 hover:text-white cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <form onSubmit={handleEditSubmit} className="flex flex-col gap-4 flex-1 overflow-y-auto">
+                {/* Recherche d'article */}
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                    Rechercher un Article
+                  </label>
+                  <div className="relative">
+                    <input 
+                      type="text" 
+                      placeholder="Nom de l'article..."
+                      value={editSearchProductQuery}
+                      onChange={(e) => {
+                        setEditSearchProductQuery(e.target.value);
+                        setEditSelectedProduct(null);
+                      }}
+                      className="w-full pl-10 pr-4 py-2.5 bg-dark-950 border border-dark-700 rounded-xl text-sm focus:outline-none focus:border-primary text-white"
+                    />
+                    <Search size={16} className="absolute left-3.5 top-3.5 text-gray-500" />
+                  </div>
+                </div>
+
+                {/* Liste des résultats de recherche pour Edit */}
+                {!editSelectedProduct && editSearchProductQuery.trim() !== '' && (
+                  <div className="bg-dark-950 border border-dark-700 rounded-xl max-h-40 overflow-y-auto flex flex-col divide-y divide-dark-800">
+                    {filteredProductsForEdit.map(product => (
+                      <button
+                        key={product.id}
+                        type="button"
+                        onClick={() => {
+                          setEditSelectedProduct(product);
+                          setEditSearchProductQuery(product.name);
+                        }}
+                        className="px-4 py-3 text-left text-sm text-gray-300 hover:bg-dark-800 hover:text-white transition-colors flex items-center justify-between"
+                      >
+                        <span className="font-semibold">{product.name}</span>
+                        <span className="text-xs text-gray-500">Stock act: {product.stock}</span>
+                      </button>
+                    ))}
+                    {filteredProductsForEdit.length === 0 && (
+                      <div className="p-3 text-center text-xs text-gray-500">Aucun article trouvé</div>
+                    )}
+                  </div>
+                )}
+
+                {/* Article sélectionné pour Edit */}
+                {editSelectedProduct && (
+                  <div className="p-3 bg-primary/10 border border-primary/20 rounded-xl flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-primary font-bold">Article sélectionné :</p>
+                      <p className="text-sm font-semibold text-white">{editSelectedProduct.name}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditSelectedProduct(null);
+                        setEditSearchProductQuery('');
+                      }}
+                      className="text-xs text-red-400 hover:underline cursor-pointer"
+                    >
+                      Changer
+                    </button>
+                  </div>
+                )}
+
+                {/* Saisie de la Quantité */}
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                    Nouvelle Quantité
+                  </label>
+                  <input 
+                    type="number" 
+                    placeholder="Ex: 10, 24, 50..."
+                    value={editQuantityInput}
+                    onChange={(e) => setEditQuantityInput(e.target.value)}
+                    required
+                    className="w-full px-4 py-2.5 bg-dark-950 border border-dark-700 rounded-xl text-sm focus:outline-none focus:border-primary text-white font-semibold"
+                  />
+                </div>
+
+                {/* Validation */}
+                <button
+                  type="submit"
+                  disabled={!editSelectedProduct || !editQuantityInput}
+                  className="w-full py-3 mt-2 bg-primary text-white rounded-xl text-sm font-bold hover:bg-primary/95 disabled:bg-gray-600 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-primary/20"
+                >
+                  <Check size={16} />
+                  Enregistrer les modifications
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
+      </div>
     </div>
-  </div>
   );
 };

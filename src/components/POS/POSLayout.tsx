@@ -10,7 +10,7 @@ import { ReportsPage } from '../Reports/ReportsPage';
 import { TablesPage } from '../Tables/TablesPage';
 import { UsersPage } from '../Users/UsersPage';
 import { ProfilePage } from '../Users/ProfilePage';
-import { Menu, Users, X, Wifi, WifiOff, RefreshCw, PackagePlus, Tag } from 'lucide-react';
+import { Menu, Users, X, Wifi, WifiOff, RefreshCw, PackagePlus, Tag, Sun, Moon } from 'lucide-react';
 import { usePOSStore } from '../../store';
 
 export const POSLayout: React.FC = () => {
@@ -26,7 +26,7 @@ export const POSLayout: React.FC = () => {
   // Mobile only toggle
   const [showCartMobile, setShowCartMobile] = useState(false);
 
-  const { currentTenant, currentUser, currentTable, cart, setCurrentUser, isOnline, isSyncing, getSalesByTenant, syncSalesWithServer } = usePOSStore();
+  const { currentTenant, currentUser, currentTable, cart, setCurrentUser, isOnline, isSyncing, getSalesByTenant, syncSalesWithServer, theme, toggleTheme } = usePOSStore();
   const canManageStock = currentUser?.role === 'ADMIN' || currentUser?.role === 'BARMAN';
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -105,6 +105,15 @@ export const POSLayout: React.FC = () => {
                 <span className="hidden sm:inline">Stocks</span>
               </button>
             )}
+            
+            {/* Bouton changement Thème Dark/Light */}
+            <button
+              onClick={() => toggleTheme()}
+              className="flex items-center justify-center p-2 bg-dark-800 text-gray-400 hover:text-white rounded-xl border border-dark-700 cursor-pointer transition-colors active:scale-95 shrink-0"
+              title={theme === 'dark' ? "Passer en mode clair" : "Passer en mode sombre"}
+            >
+              {theme === 'dark' ? <Sun size={14} className="text-yellow-400" /> : <Moon size={14} className="text-blue-500" />}
+            </button>
             
             {/* Status Réseau / Synchro */}
             <div className="flex items-center gap-1 sm:gap-2 shrink-0 ml-auto">

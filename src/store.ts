@@ -49,6 +49,7 @@ interface POSState {
   stockHistory: StockHistoryEntry[];
   getStockHistoryByTenant: () => StockHistoryEntry[];
   updateStock: (productId: string, quantityToAdd: number) => void;
+  updateStockHistoryEntry: (entryId: string, newProductId: string, newQuantity: number) => void;
   addProduct: (product: Omit<Product, 'id'>) => void;
   updateProduct: (product: Product) => void;
   deleteProduct: (productId: string) => void;
@@ -89,6 +90,10 @@ interface POSState {
   notification: { type: 'success' | 'alert' | 'error' | 'confirm'; message: string; onConfirm?: () => void } | null;
   showNotification: (type: 'success' | 'alert' | 'error' | 'confirm', message: string, onConfirm?: () => void) => void;
   hideNotification: () => void;
+
+  // Theme Management
+  theme: 'dark' | 'light';
+  toggleTheme: () => void;
 
   // Local Testing Environment
   isLocalTestMode: boolean;
@@ -179,6 +184,7 @@ export const usePOSStore = create<POSState>((set, get) => {
       tableCarts: updates.tableCarts !== undefined ? updates.tableCarts : state.tableCarts,
       cart: updates.cart !== undefined ? updates.cart : state.cart,
       currentTable: updates.currentTable !== undefined ? updates.currentTable : state.currentTable,
+      theme: updates.theme !== undefined ? updates.theme : state.theme,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
   };
@@ -205,6 +211,23 @@ export const usePOSStore = create<POSState>((set, get) => {
       );
       return { isLocalTestMode: newMode };
     }),
+
+    theme: persistedData.theme || 'dark',
+    toggleTheme: () => {
+      const currentTheme = get().theme;
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      
+      // Mettre à jour la classe sur l'élément html
+      const htmlEl = document.documentElement;
+      if (newTheme === 'light') {
+        htmlEl.classList.add('light');
+      } else {
+        htmlEl.classList.remove('light');
+      }
+
+      set({ theme: newTheme });
+      persist({ theme: newTheme });
+    },
 
     getStockHistoryByTenant: () => {
       const tenantId = get().currentTenant?.id;
@@ -848,6 +871,68 @@ export const usePOSStore = create<POSState>((set, get) => {
       });
 
       get().syncCloudData().catch(console.error);
+    },
+
+    updateStockHistoryEntry: (entryId, newProductId, newQuantity) => {
+      const state = get();
+      const entry = state.stockHistory.find(e => e.id === entryId);
+      if (!entry) return;
+
+      const oldProductId = entry.productId;
+      const oldQuantity = entry.quantityAdded;
+
+      // Récupérer le nouveau produit
+      const newProduct = state.products.find(p => p.id === newProductId);
+      if (!newProduct) return;
+
+      // Mettre à jour les stocks correspondants
+      const updatedProducts = state.products.map(p => {
+        let currentStock = p.stock;
+        
+        // Si c'est l'ancien produit, on annule l'ancienne quantité ajoutée
+        if (p.id === oldProductId) {
+          currentStock = Math.max(0, currentStock - oldQuantity);
+        }
+        
+        // Si c'est le nouveau produit, on applique la nouvelle quantité
+        if (p.id === newProductId) {
+          // Si le nouveau produit est aussi l'ancien produit (juste la quantité change),
+          // on a déjà fait Math.max(0, currentStock - oldQuantity). On y ajoute la nouvelle.
+          currentStock = Math.max(0, currentStock + newQuantity);
+        }
+        
+        return p.id === oldProductId || p.id === newProductId
+          ? { ...p, stock: currentStock }
+          : p;
+      });
+
+      // Mettre à jour l'entrée de l'historique
+      const updatedHistory = state.stockHistory.map(e => {
+        if (e.id === entryId) {
+          return {
+            ...e,
+            productId: newProductId,
+            productName: newProduct.name,
+            quantityAdded: newQuantity,
+            // Optionnel : indiquer que l'entrée a été modifiée
+            userLabel: `${state.currentUser?.name || 'Administrateur'} (Modifié)`
+          };
+        }
+        return e;
+      });
+
+      set({
+        products: updatedProducts,
+        stockHistory: updatedHistory,
+        hasUnsyncedProductsChanges: state.isLocalTestMode ? state.hasUnsyncedProductsChanges : true
+      });
+
+      persist({
+        products: updatedProducts,
+        stockHistory: updatedHistory
+      });
+
+      state.syncCloudData().catch(console.error);
     },
 
     addProduct: (product) => {

@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
 @theme {
-  --color-dark-900: #111827;
-  --color-dark-800: #1F2937;
-  --color-dark-700: #374151;
+  --color-dark-900: var(--bg-900);
+  --color-dark-800: var(--bg-800);
+  --color-dark-700: var(--bg-700);
   --color-primary: #3B82F6;
   --color-accent-beer: #F59E0B;
   --color-accent-cocktail: #8B5CF6;
@@ -12,11 +12,68 @@
   --color-accent-wine: #EC4899;
 }
 
+:root {
+  /* Mode sombre par défaut */
+  --bg-900: #111827;
+  --bg-800: #1F2937;
+  --bg-700: #374151;
+  --text-main: #FFFFFF;
+}
+
+html.light {
+  /* Mode clair */
+  --bg-900: #F3F4F6;
+  --bg-800: #FFFFFF;
+  --bg-700: #E5E7EB;
+  --text-main: #1F2937;
+}
+
 @layer base {
   body {
     background-color: var(--color-dark-900);
-    color: white;
+    color: var(--text-main);
     -webkit-tap-highlight-color: transparent;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+}
+
+/* Surcharge globale de lisibilité pour le mode clair */
+html.light {
+  /* Forcer la couleur du texte par défaut pour les classes text-white et les textes de base */
+  .text-white, 
+  h1, h2, h3, h4, h5, h6, 
+  p, span, label, input, select, textarea,
+  .font-bold {
+    /* Si l'élément n'a pas une classe de couleur de fond vive comme un badge ou un bouton primaire */
+    &:not(.bg-primary):not(.bg-red-600):not(.bg-green-600):not(.bg-blue-600):not(.bg-purple-600):not(.bg-yellow-500):not(.bg-gradient-to-r) {
+      color: #111827 !important;
+    }
+  }
+
+  /* Adapter les textes gris clairs en gris plus foncés pour le contraste */
+  .text-gray-400 {
+    color: #4B5563 !important;
+  }
+  
+  .text-gray-300 {
+    color: #374151 !important;
+  }
+
+  .text-gray-500 {
+    color: #6B7280 !important;
+  }
+
+  /* Bordures plus visibles sur fond blanc */
+  .border-dark-700 {
+    border-color: #D1D5DB !important;
+  }
+
+  .border-dark-800 {
+    border-color: #E5E7EB !important;
+  }
+
+  .bg-dark-950 {
+    background-color: #F9FAFB !important;
   }
 }
 

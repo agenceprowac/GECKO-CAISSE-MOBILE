@@ -19,6 +19,17 @@ function App() {
   const setOnlineStatus = usePOSStore(state => state.setOnlineStatus);
   const syncSalesWithServer = usePOSStore(state => state.syncSalesWithServer);
   const setDeferredPrompt = usePOSStore(state => state.setDeferredPrompt);
+  const theme = usePOSStore(state => state.theme);
+
+  // Appliquer le thème au démarrage / changement
+  useEffect(() => {
+    const htmlEl = document.documentElement;
+    if (theme === 'light') {
+      htmlEl.classList.add('light');
+    } else {
+      htmlEl.classList.remove('light');
+    }
+  }, [theme]);
 
   // Network & PWA event listeners
   useEffect(() => {
