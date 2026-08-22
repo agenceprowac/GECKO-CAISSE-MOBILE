@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, PackagePlus, Plus, Search, Edit2, Check } from 'lucide-react';
+import { X, PackagePlus, Plus, Search, Edit2, Check, Clock, ListFilter } from 'lucide-react';
 import { usePOSStore } from '../../store';
 import type { Product } from '../../types';
 
@@ -19,6 +19,7 @@ export const StockManager: React.FC<StockManagerProps> = ({ onClose }) => {
   const stockHistory = getStockHistoryByTenant();
 
   // États pour les modales et la recherche
+  const [activeTab, setActiveTab] = useState<'ENTRIES' | 'ALL_MOVEMENTS'>('ENTRIES');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [period, setPeriod] = useState<'TODAY' | 'WEEK' | 'MONTH' | 'CUSTOM' | 'ALL'>('TODAY');
@@ -56,9 +57,50 @@ export const StockManager: React.FC<StockManagerProps> = ({ onClose }) => {
     return new Date();
   };
 
-  // Filtrer par période et s'assurer que quantityAdded > 0
+  // Filtrer par période et s'assurer que quantityAdded > 0 (pour l'onglet des entrées)
   const filteredHistory = stockHistory.filter(entry => {
     if (entry.quantityAdded <= 0) return false;
+    if (period === 'ALL') return true;
+    
+    const entryDate = parseEntryDate(entry);
+    const now = new Date();
+    
+    if (period === 'TODAY') {
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      return entryDate >= startOfToday;
+    }
+    
+    if (period === 'WEEK') {
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - now.getDay());
+      startOfWeek.setHours(0, 0, 0, 0);
+      return entryDate >= startOfWeek;
+    }
+    
+    if (period === 'MONTH') {
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      return entryDate >= startOfMonth;
+    }
+
+    if (period === 'CUSTOM') {
+      if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        if (entryDate < start) return false;
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        if (entryDate > end) return false;
+      }
+      return true;
+    }
+    
+    return true;
+  });
+
+  // Filtrer par période (inclut les entrées ET les ventes) pour l'onglet de tous les mouvements
+  const filteredAllMovements = stockHistory.filter(entry => {
     if (period === 'ALL') return true;
     
     const entryDate = parseEntryDate(entry);
@@ -156,6 +198,27 @@ export const StockManager: React.FC<StockManagerProps> = ({ onClose }) => {
           </button>
         </div>
 
+        {/* Onglets de navigation */}
+        <div className="flex bg-dark-900 px-6 py-2 border-b border-dark-700 shrink-0 gap-4">
+          <button
+            onClick={() => setActiveTab('ENTRIES')}
+            className={`pb-2 px-1 text-sm font-bold border-b-2 transition-all cursor-pointer ${
+              activeTab === 'ENTRIES' ? 'border-primary text-primary' : 'border-transparent text-gray-400 hover:text-white'
+            }`}
+          >
+            Entrées de Stock
+          </button>
+          <button
+            onClick={() => setActiveTab('ALL_MOVEMENTS')}
+            className={`pb-2 px-1 text-sm font-bold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'ALL_MOVEMENTS' ? 'border-primary text-primary' : 'border-transparent text-gray-400 hover:text-white'
+            }`}
+          >
+            <Clock size={16} />
+            Détail des Mouvements (Ventes & Entrées)
+          </button>
+        </div>
+
         {/* Barre d'action principale */}
         <div className="flex flex-col md:flex-row items-center justify-between p-6 bg-dark-900 border-b border-dark-700 gap-4 shrink-0">
           <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
@@ -191,67 +254,108 @@ export const StockManager: React.FC<StockManagerProps> = ({ onClose }) => {
               </div>
             )}
           </div>
-          <button
-            onClick={() => {
-              setSelectedProduct(null);
-              setQuantityInput('');
-              setSearchProductQuery('');
-              setShowAddModal(true);
-            }}
-            className="w-full sm:w-auto px-5 py-3 bg-primary text-white rounded-xl text-sm font-bold hover:bg-primary/95 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-primary/20 active:scale-95 animate-pulse"
-          >
-            <Plus size={18} />
-            Nouvelle Entrée
-          </button>
+          {activeTab === 'ENTRIES' && (
+            <button
+              onClick={() => {
+                setSelectedProduct(null);
+                setQuantityInput('');
+                setSearchProductQuery('');
+                setShowAddModal(true);
+              }}
+              className="w-full sm:w-auto px-5 py-3 bg-primary text-white rounded-xl text-sm font-bold hover:bg-primary/95 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-primary/20 active:scale-95 animate-pulse"
+            >
+              <Plus size={18} />
+              Nouvelle Entrée
+            </button>
+          )}
         </div>
 
         {/* Liste des entrées */}
         <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
-          {filteredHistory.length === 0 ? (
-            <div className="text-center text-gray-500 py-16 flex flex-col items-center justify-center gap-3">
-              <PackagePlus size={48} className="text-gray-600" />
-              <p className="font-semibold text-lg">Aucune entrée de stock pour cette période.</p>
-              <p className="text-sm text-gray-600 max-w-sm leading-relaxed">
-                Ajustez le filtre périodique ou appuyez sur "Nouvelle Entrée" pour ajouter du stock.
-              </p>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {filteredHistory
-                .sort((a, b) => new Date(b.rawDate || 0).getTime() - new Date(a.rawDate || 0).getTime())
-                .map(entry => (
-                  <div 
-                    key={entry.id} 
-                    className="p-4 bg-dark-900 border border-dark-700 rounded-2xl flex items-center justify-between gap-4 text-sm shadow-md hover:border-dark-600 transition-colors"
-                  >
-                    <div className="flex flex-col gap-1.5">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-bold text-white text-base">{entry.productName}</span>
-                        <span className="text-[10px] bg-dark-800 text-gray-400 px-2 py-0.5 rounded font-semibold border border-dark-700">
-                          {entry.userLabel}
-                        </span>
+          {activeTab === 'ENTRIES' ? (
+            /* TAB 1: Entrées modifiables */
+            filteredHistory.length === 0 ? (
+              <div className="text-center text-gray-500 py-16 flex flex-col items-center justify-center gap-3">
+                <PackagePlus size={48} className="text-gray-600" />
+                <p className="font-semibold text-lg">Aucune entrée de stock pour cette période.</p>
+                <p className="text-sm text-gray-600 max-w-sm leading-relaxed">
+                  Ajustez le filtre périodique ou appuyez sur "Nouvelle Entrée" pour ajouter du stock.
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {filteredHistory
+                  .sort((a, b) => new Date(b.rawDate || 0).getTime() - new Date(a.rawDate || 0).getTime())
+                  .map(entry => (
+                    <div 
+                      key={entry.id} 
+                      className="p-4 bg-dark-900 border border-dark-700 rounded-2xl flex items-center justify-between gap-4 text-sm shadow-md hover:border-dark-600 transition-colors"
+                    >
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-bold text-white text-base">{entry.productName}</span>
+                          <span className="text-[10px] bg-dark-800 text-gray-400 px-2 py-0.5 rounded font-semibold border border-dark-700">
+                            {entry.userLabel}
+                          </span>
+                        </div>
+                        <p className="text-gray-500 text-xs font-medium">{entry.createdAt}</p>
                       </div>
-                      <p className="text-gray-500 text-xs font-medium">{entry.createdAt}</p>
+                      
+                      <div className="flex items-center gap-4 shrink-0">
+                        <span className="text-lg font-black text-green-400">
+                          +{entry.quantityAdded}
+                        </span>
+                        
+                        <button
+                          onClick={() => openEditModal(entry)}
+                          className="p-2 bg-dark-800 text-gray-400 hover:text-white rounded-xl border border-dark-700 hover:border-gray-500 transition-all cursor-pointer"
+                          title="Modifier cette entrée"
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                      </div>
                     </div>
-                    
-                    <div className="flex items-center gap-4 shrink-0">
-                      <span className={`text-lg font-black ${
+                  ))}
+              </div>
+            )
+          ) : (
+            /* TAB 2: Historique complet brute (Entrées + Ventes) */
+            filteredAllMovements.length === 0 ? (
+              <div className="text-center text-gray-500 py-16 flex flex-col items-center justify-center gap-3">
+                <ListFilter size={48} className="text-gray-600" />
+                <p className="font-semibold text-lg">Aucun mouvement de stock pour cette période.</p>
+                <p className="text-sm text-gray-600 max-w-sm leading-relaxed">
+                  Toutes les entrées de stocks et ventes en caisse s'afficheront ici.
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {filteredAllMovements
+                  .sort((a, b) => new Date(b.rawDate || 0).getTime() - new Date(a.rawDate || 0).getTime())
+                  .map(entry => (
+                    <div 
+                      key={entry.id} 
+                      className="p-4 bg-dark-900 border border-dark-700 rounded-2xl flex items-center justify-between gap-4 text-sm shadow-md hover:border-dark-600 transition-colors"
+                    >
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-bold text-white text-base">{entry.productName}</span>
+                          <span className="text-[10px] bg-dark-800 text-gray-400 px-2 py-0.5 rounded font-semibold border border-dark-700">
+                            {entry.userLabel}
+                          </span>
+                        </div>
+                        <p className="text-gray-500 text-xs font-medium">{entry.createdAt}</p>
+                      </div>
+                      
+                      <span className={`text-lg font-black shrink-0 ${
                         entry.quantityAdded >= 0 ? 'text-green-400' : 'text-red-400'
                       }`}>
                         {entry.quantityAdded >= 0 ? `+${entry.quantityAdded}` : entry.quantityAdded}
                       </span>
-                      
-                      <button
-                        onClick={() => openEditModal(entry)}
-                        className="p-2 bg-dark-800 text-gray-400 hover:text-white rounded-xl border border-dark-700 hover:border-gray-500 transition-all cursor-pointer"
-                        title="Modifier cette entrée"
-                      >
-                        <Edit2 size={16} />
-                      </button>
                     </div>
-                  </div>
-                ))}
-            </div>
+                  ))}
+              </div>
+            )
           )}
         </div>
 
