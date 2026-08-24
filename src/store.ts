@@ -197,6 +197,7 @@ export const usePOSStore = create<POSState>((set, get) => {
     tenants: persistedData.tenants,
     currentTenant: persistedData.currentTenant,
     categories: persistedData.categories?.length > 0 ? persistedData.categories : mockCategories,
+    deletedCategoryIds: persistedData.deletedCategoryIds || [],
     products: persistedData.products,
     tables: persistedData.tables,
     users: persistedData.users,

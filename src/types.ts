@@ -43,6 +43,7 @@ export type OrderItem = {
 export type Table = {
   id: string;
   name: string;
+  isActive?: boolean;
   tenantId?: string;
 };
 
