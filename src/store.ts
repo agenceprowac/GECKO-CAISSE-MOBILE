@@ -940,18 +940,21 @@ export const usePOSStore = create<POSState>((set, get) => {
       const updatedProducts = [...get().products, { ...product, id: 'prd_' + crypto.randomUUID(), tenantId }];
       set({ products: updatedProducts, hasUnsyncedProductsChanges: true });
       persist({ products: updatedProducts });
+      get().syncCloudData().catch(console.error);
     },
 
     updateProduct: (updatedProduct) => {
       const updatedProducts = get().products.map(p => p.id === updatedProduct.id ? updatedProduct : p);
       set({ products: updatedProducts, hasUnsyncedProductsChanges: true });
       persist({ products: updatedProducts });
+      get().syncCloudData().catch(console.error);
     },
 
     deleteProduct: (productId) => {
       const updatedProducts = get().products.filter(p => p.id !== productId);
       set({ products: updatedProducts, hasUnsyncedProductsChanges: true });
       persist({ products: updatedProducts });
+      get().syncCloudData().catch(console.error);
     },
 
     // Tables actions
@@ -999,6 +1002,7 @@ export const usePOSStore = create<POSState>((set, get) => {
         hasUnsyncedUsersChanges: true
       });
       persist({ users: updatedUsers });
+      get().syncCloudData().catch(console.error);
     },
 
     deleteUser: (userId) => {
@@ -1010,6 +1014,7 @@ export const usePOSStore = create<POSState>((set, get) => {
         hasUnsyncedUsersChanges: true
       });
       persist({ users: updatedUsers });
+      get().syncCloudData().catch(console.error);
     },
 
     setCurrentUser: (user) => set({ currentUser: user }),
