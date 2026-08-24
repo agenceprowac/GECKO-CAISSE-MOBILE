@@ -28,7 +28,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       'api_debug.log',
       `[${new Date().toISOString()}] Sync call: localTables=${JSON.stringify(localTables)}\n`
     );
-  } catch (err) {}
+  } catch {}
 
   if (!tenantId) {
     return res.status(400).json({ error: 'ID de l\'établissement requis pour la synchronisation.' });
