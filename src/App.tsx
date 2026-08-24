@@ -67,6 +67,9 @@ function App() {
     // Ne rafraîchir que si on est dans un tenant actif
     if (!currentTenant || isAuthenticatingSuperAdmin) return;
     
+    // Lancer une première synchronisation immédiate au démarrage/changement
+    syncSalesWithServer();
+    
     const interval = setInterval(() => {
       syncSalesWithServer();
     }, 15000); // toutes les 15 secondes
