@@ -311,7 +311,16 @@ export const usePOSStore = create<POSState>((set, get) => {
         });
 
         if (!response.ok) {
-          throw new Error('Erreur de réponse de l\'API de synchronisation.');
+          const errData = await response.json().catch(() => ({}));
+          const errorMsg = errData.error || "Erreur de réponse de l'API de synchronisation.";
+          
+          if (response.status === 404) {
+            get().showNotification('error', "Établissement introuvable sur le serveur. Veuillez vous déconnecter et vous reconnecter.");
+          } else if (response.status === 401) {
+            get().showNotification('error', "Code PIN d'établissement incorrect ou session expirée. Veuillez vous déconnecter et vous reconnecter.");
+          }
+          
+          throw new Error(errorMsg);
         }
 
         const data = await response.json();
