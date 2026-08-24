@@ -20,7 +20,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Méthode non autorisée.' });
   }
 
-  const { tenantId, localSales, localProducts, localTables, localUsers, localStockHistory, localCategories } = req.body;
+  const { tenantId, localSales, localProducts, localTables, localUsers, localStockHistory, localCategories, deletedCategories } = req.body;
 
   try {
     const fs = await import('fs');
@@ -53,6 +53,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (tenant.adminPin !== tenantPin) {
         return res.status(401).json({ error: "Code PIN d'établissement incorrect ou manquant." });
       }
+    }
+
+    // 0. Traiter les suppressions de catégories (tombstones)
+    if (deletedCategories && Array.isArray(deletedCategories) && deletedCategories.length > 0) {
+      await prisma.category.deleteMany({
+        where: {
+          id: { in: deletedCategories },
+          tenantId: tenantId
+        }
+      });
     }
 
     // 0. Synchroniser les catégories locales (uniquement si envoyées par le client)
@@ -111,32 +121,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // 2. Synchroniser les tables locales (uniquement si envoyé par le client)
     if (localTables !== undefined && Array.isArray(localTables)) {
-      const localTableIds = localTables.map(t => t.id);
-
-      // Supprimer les commandes associées aux tables supprimées pour éviter les violations de clés étrangères
-      await prisma.order.deleteMany({
-        where: {
-          tenantId: tenantId,
-          tableId: { notIn: localTableIds }
-        }
-      });
-
-      // Supprimer les tables qui ne sont plus dans la liste locale
-      await prisma.table.deleteMany({
-        where: {
-          tenantId: tenantId,
-          id: { notIn: localTableIds }
-        }
-      });
-
       for (const tbl of localTables) {
         await prisma.table.upsert({
           where: { id: tbl.id },
-          update: { name: tbl.name },
+          update: { 
+            name: tbl.name,
+            isActive: tbl.isActive !== false
+          },
           create: {
             id: tbl.id,
             tenantId: tenantId,
-            name: tbl.name
+            name: tbl.name,
+            isActive: tbl.isActive !== false
           }
         });
       }

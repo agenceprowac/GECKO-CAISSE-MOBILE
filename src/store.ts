@@ -35,6 +35,7 @@ interface POSState {
   hasUnsyncedProductsChanges: boolean;
   hasUnsyncedTablesChanges: boolean;
   hasUnsyncedUsersChanges: boolean;
+  deletedCategoryIds: string[];
 
   // Categories
   categories: Category[];
@@ -42,7 +43,7 @@ interface POSState {
   addCategory: (category: Omit<Category, 'id'>) => void;
   updateCategory: (category: Category) => void;
   deleteCategory: (categoryId: string) => void;
-
+  
   // Products & Inventory History
   products: Product[];
   getProductsByTenant: (includeInactive?: boolean) => Product[];
@@ -113,6 +114,7 @@ const loadPersistedData = () => {
       if (!parsed.stockHistory) parsed.stockHistory = [];
       if (!parsed.tableCarts) parsed.tableCarts = {};
       if (!parsed.cart) parsed.cart = [];
+      if (!parsed.deletedCategoryIds) parsed.deletedCategoryIds = [];
       return parsed;
     }
   } catch (e) {
@@ -156,6 +158,7 @@ const loadPersistedData = () => {
     categories: [],
     sales: [],
     stockHistory: [],
+    deletedCategoryIds: [],
     hasEnteredApp: false,
     isAuthenticatingSuperAdmin: false,
     impersonatedFromSuperAdmin: false
@@ -181,6 +184,7 @@ export const usePOSStore = create<POSState>((set, get) => {
       hasUnsyncedTablesChanges: updates.hasUnsyncedTablesChanges !== undefined ? updates.hasUnsyncedTablesChanges : state.hasUnsyncedTablesChanges,
       hasUnsyncedUsersChanges: updates.hasUnsyncedUsersChanges !== undefined ? updates.hasUnsyncedUsersChanges : state.hasUnsyncedUsersChanges,
       categories: updates.categories !== undefined ? updates.categories : state.categories,
+      deletedCategoryIds: updates.deletedCategoryIds !== undefined ? updates.deletedCategoryIds : state.deletedCategoryIds,
       tableCarts: updates.tableCarts !== undefined ? updates.tableCarts : state.tableCarts,
       cart: updates.cart !== undefined ? updates.cart : state.cart,
       currentTable: updates.currentTable !== undefined ? updates.currentTable : state.currentTable,
@@ -306,6 +310,7 @@ export const usePOSStore = create<POSState>((set, get) => {
             localTables: sentTablesChanges ? tenantTables : undefined,
             localUsers: sentUsersChanges ? tenantUsers : undefined,
             localCategories: get().categories.filter(c => c.tenantId === tenantId),
+            deletedCategories: state.deletedCategoryIds,
             localStockHistory: tenantStockHistory
           })
         });
@@ -384,6 +389,7 @@ export const usePOSStore = create<POSState>((set, get) => {
           stockHistory: finalStockHistory,
           sales: finalSales,
           isSyncing: false,
+          deletedCategoryIds: [],
           hasUnsyncedProductsChanges: currentState.hasUnsyncedProductsChanges && !sentProductsChanges,
           hasUnsyncedTablesChanges: currentState.hasUnsyncedTablesChanges && !sentTablesChanges,
           hasUnsyncedUsersChanges: currentState.hasUnsyncedUsersChanges && !sentUsersChanges
@@ -405,6 +411,7 @@ export const usePOSStore = create<POSState>((set, get) => {
           tables: finalTables,
           users: finalUsers,
           categories: finalCategories,
+          deletedCategoryIds: [],
           stockHistory: finalStockHistory,
           sales: finalSales,
           tenants: data.allTenants && data.allTenants.length > 0 ? data.allTenants : state.tenants
@@ -797,9 +804,22 @@ export const usePOSStore = create<POSState>((set, get) => {
     },
 
     deleteCategory: (categoryId) => {
-      const updatedCategories = get().categories.filter(c => c.id !== categoryId);
-      set({ categories: updatedCategories });
-      persist({ categories: updatedCategories });
+      const state = get();
+      const updatedCategories = state.categories.filter(c => c.id !== categoryId);
+      const isCustomCategory = state.categories.some(c => c.id === categoryId && c.tenantId);
+      
+      const newDeletedIds = isCustomCategory 
+        ? [...state.deletedCategoryIds, categoryId]
+        : state.deletedCategoryIds;
+
+      set({ 
+        categories: updatedCategories, 
+        deletedCategoryIds: newDeletedIds 
+      });
+      persist({ 
+        categories: updatedCategories, 
+        deletedCategoryIds: newDeletedIds 
+      });
       get().syncCloudData().catch(console.error);
     },
 
@@ -819,7 +839,7 @@ export const usePOSStore = create<POSState>((set, get) => {
 
     getTablesByTenant: () => {
       const tenantId = get().currentTenant?.id;
-      return get().tables.filter(t => t.tenantId === tenantId);
+      return get().tables.filter(t => t.tenantId === tenantId && t.isActive !== false);
     },
 
     getUsersByTenant: (includeInactive = false) => {
@@ -960,7 +980,7 @@ export const usePOSStore = create<POSState>((set, get) => {
     },
 
     deleteProduct: (productId) => {
-      const updatedProducts = get().products.filter(p => p.id !== productId);
+      const updatedProducts = get().products.map(p => p.id === productId ? { ...p, isAvailable: false } : p);
       set({ products: updatedProducts, hasUnsyncedProductsChanges: true });
       persist({ products: updatedProducts });
       get().syncCloudData().catch(console.error);
@@ -983,7 +1003,7 @@ export const usePOSStore = create<POSState>((set, get) => {
     },
 
     deleteTable: (tableId) => {
-      const updatedTables = get().tables.filter(t => t.id !== tableId);
+      const updatedTables = get().tables.map(t => t.id === tableId ? { ...t, isActive: false } : t);
       set({ 
         tables: updatedTables,
         currentTable: get().currentTable?.id === tableId ? null : get().currentTable,
@@ -1015,7 +1035,7 @@ export const usePOSStore = create<POSState>((set, get) => {
     },
 
     deleteUser: (userId) => {
-      const updatedUsers = get().users.filter(u => u.id !== userId);
+      const updatedUsers = get().users.map(u => u.id === userId ? { ...u, isActive: false } : u);
       const isSelf = get().currentUser?.id === userId;
       set({ 
         users: updatedUsers,
