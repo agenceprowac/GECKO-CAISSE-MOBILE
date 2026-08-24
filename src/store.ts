@@ -297,19 +297,15 @@ export const usePOSStore = create<POSState>((set, get) => {
           headers['X-Tenant-Pin'] = state.currentTenant.adminPin;
         }
 
-        const sentProductsChanges = state.hasUnsyncedProductsChanges;
-        const sentTablesChanges = state.hasUnsyncedTablesChanges;
-        const sentUsersChanges = state.hasUnsyncedUsersChanges;
-
         const response = await fetch('/api/sync', {
           method: 'POST',
           headers,
           body: JSON.stringify({
             tenantId,
             localSales: unsyncedSales,
-            localProducts: sentProductsChanges ? tenantProducts : undefined,
-            localTables: sentTablesChanges ? tenantTables : undefined,
-            localUsers: sentUsersChanges ? tenantUsers : undefined,
+            localProducts: tenantProducts, // Toujours envoyer pour auto-guérison
+            localTables: tenantTables,     // Toujours envoyer pour auto-guérison
+            localUsers: tenantUsers,       // Toujours envoyer pour auto-guérison
             localCategories: get().categories.filter(c => c.tenantId === tenantId),
             deletedCategories: state.deletedCategoryIds,
             localStockHistory: tenantStockHistory
@@ -380,9 +376,9 @@ export const usePOSStore = create<POSState>((set, get) => {
           sales: finalSales,
           isSyncing: false,
           deletedCategoryIds: [],
-          hasUnsyncedProductsChanges: currentState.hasUnsyncedProductsChanges && !sentProductsChanges,
-          hasUnsyncedTablesChanges: currentState.hasUnsyncedTablesChanges && !sentTablesChanges,
-          hasUnsyncedUsersChanges: currentState.hasUnsyncedUsersChanges && !sentUsersChanges
+          hasUnsyncedProductsChanges: false,
+          hasUnsyncedTablesChanges: false,
+          hasUnsyncedUsersChanges: false
         });
 
         // Mettre à jour le tenant actuel s'il a changé (ex: son plan ou statut modifié par le Super-Admin)
