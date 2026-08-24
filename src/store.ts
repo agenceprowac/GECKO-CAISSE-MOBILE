@@ -354,26 +354,15 @@ export const usePOSStore = create<POSState>((set, get) => {
         const finalStockHistory = [...currentState.stockHistory, ...missingServerHistory];
 
         // 3. Fusionner les Produits, Tables et Utilisateurs
+        // Le serveur est la source de vérité : il a déjà traité et fusionné nos modifications locales envoyées.
         const otherTenantsProducts = currentState.products.filter(p => p.tenantId !== tenantId);
-        const localProductIds = new Set(currentState.products.filter(p => p.tenantId === tenantId).map(p => p.id));
-        const missingServerProducts = data.products.filter((p: any) => !localProductIds.has(p.id));
-        const finalProducts = currentState.hasUnsyncedProductsChanges 
-          ? [...currentState.products, ...missingServerProducts] 
-          : [...otherTenantsProducts, ...data.products];
+        const finalProducts = [...otherTenantsProducts, ...data.products];
 
         const otherTenantsTables = currentState.tables.filter(t => t.tenantId !== tenantId);
-        const localTableIds = new Set(currentState.tables.filter(t => t.tenantId === tenantId).map(t => t.id));
-        const missingServerTables = data.tables.filter((t: any) => !localTableIds.has(t.id));
-        const finalTables = currentState.hasUnsyncedTablesChanges
-          ? [...currentState.tables, ...missingServerTables]
-          : [...otherTenantsTables, ...data.tables];
+        const finalTables = [...otherTenantsTables, ...data.tables];
 
         const otherTenantsUsers = currentState.users.filter(u => u.tenantId !== tenantId);
-        const localUserIds = new Set(currentState.users.filter(u => u.tenantId === tenantId).map(u => u.id));
-        const missingServerUsers = data.users.filter((u: any) => !localUserIds.has(u.id));
-        const finalUsers = currentState.hasUnsyncedUsersChanges
-          ? [...currentState.users, ...missingServerUsers]
-          : [...otherTenantsUsers, ...data.users];
+        const finalUsers = [...otherTenantsUsers, ...data.users];
 
         // 4. Fusionner les Catégories
         // Les catégories mock n'ont pas de tenantId, on les conserve.
