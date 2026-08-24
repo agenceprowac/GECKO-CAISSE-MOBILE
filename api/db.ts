@@ -13,7 +13,10 @@ if (globalForPrisma.prisma) {
 } else {
   // Sous Prisma 7, l'adaptateur pg est requis pour Postgres
   const connectionString = process.env.DATABASE_URL;
-  const pool = new Pool({ connectionString });
+  const pool = new Pool({ 
+    connectionString,
+    max: 1 // Limite à 1 connexion par instance pour éviter la saturation de Supabase
+  });
   const adapter = new PrismaPg(pool);
 
   prisma = new PrismaClient({
