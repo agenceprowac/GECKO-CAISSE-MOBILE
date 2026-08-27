@@ -8,9 +8,9 @@ interface ArticleManagerProps {
 }
 
 export const ArticleManager: React.FC<ArticleManagerProps> = ({ onClose }) => {
-  const { currentTenant, products: allProducts, categories: allCategories, addProduct, updateProduct, addCategory, updateCategory, deleteCategory, showNotification } = usePOSStore();
+  const { currentTenant, products: allProducts, addProduct, updateProduct, addCategory, updateCategory, deleteCategory, showNotification } = usePOSStore();
   const products = allProducts.filter(p => p.tenantId === currentTenant?.id);
-  const categories = allCategories.filter(c => c.tenantId === currentTenant?.id || !c.tenantId);
+  const categories = usePOSStore(state => state.getCategoriesByTenant());
   
   const [search, setSearch] = useState('');
   const [isCreating, setIsCreating] = useState(false);
@@ -251,15 +251,13 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({ onClose }) => {
                             >
                               <Edit2 size={18} />
                             </button>
-                            {cat.tenantId && (
-                              <button
-                                onClick={() => handleDeleteCategoryClick(cat.id)}
-                                className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                                title="Supprimer la catégorie"
-                              >
-                                <Trash2 size={18} />
-                              </button>
-                            )}
+                            <button
+                              onClick={() => handleDeleteCategoryClick(cat.id)}
+                              className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                              title="Supprimer la catégorie"
+                            >
+                              <Trash2 size={18} />
+                            </button>
                           </div>
                         </>
                       )}

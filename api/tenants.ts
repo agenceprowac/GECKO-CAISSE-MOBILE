@@ -26,15 +26,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     // 1. Connexion / Vérification d'un espace existant
     if (action === 'login') {
-      if (!email || !adminPin) return res.status(400).json({ error: 'Email et code PIN requis.' });
-      const emailLower = email.toLowerCase().trim();
+      if (!email || !adminPin) return res.status(400).json({ error: 'Identifiant et code PIN requis.' });
+      const identifierLower = email.toLowerCase().trim();
 
-      const tenant = await prisma.tenant.findUnique({
-        where: { email: emailLower }
+      // Recherche par email OU par nom d'établissement
+      const tenant = await prisma.tenant.findFirst({
+        where: {
+          OR: [
+            { email: identifierLower },
+            { establishmentName: { equals: identifierLower, mode: 'insensitive' } }
+          ]
+        }
       });
 
       if (!tenant) {
-        return res.status(404).json({ error: "Aucun établissement n'est associé à cette adresse email." });
+        return res.status(404).json({ error: "Aucun établissement n'a été trouvé avec cet email ou ce nom." });
       }
 
       if (tenant.adminPin !== adminPin) {

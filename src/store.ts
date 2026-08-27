@@ -792,11 +792,7 @@ export const usePOSStore = create<POSState>((set, get) => {
     deleteCategory: (categoryId) => {
       const state = get();
       const updatedCategories = state.categories.filter(c => c.id !== categoryId);
-      const isCustomCategory = state.categories.some(c => c.id === categoryId && c.tenantId);
-      
-      const newDeletedIds = isCustomCategory 
-        ? [...state.deletedCategoryIds, categoryId]
-        : state.deletedCategoryIds;
+      const newDeletedIds = [...(state.deletedCategoryIds || []), categoryId];
 
       set({ 
         categories: updatedCategories, 
@@ -813,8 +809,22 @@ export const usePOSStore = create<POSState>((set, get) => {
     getCategoriesByTenant: () => {
       const state = get();
       const tenantId = state.currentTenant?.id;
-      // Retourne les catégories du tenant + celles par défaut (mock) qui n'ont pas de tenantId (globales)
-      return state.categories.filter(c => c.tenantId === tenantId || !c.tenantId);
+      if (!tenantId) return [];
+
+      // Filtrer les catégories appartenant à ce tenant ou globales, puis dé-dupliquer par nom
+      const rawCategories = state.categories.filter(c => c.tenantId === tenantId || !c.tenantId);
+      const seenNames = new Set<string>();
+      const uniqueCategories: Category[] = [];
+
+      for (const cat of rawCategories) {
+        const lowerName = cat.name.trim().toLowerCase();
+        if (!seenNames.has(lowerName)) {
+          seenNames.add(lowerName);
+          uniqueCategories.push({ ...cat, tenantId: cat.tenantId || tenantId });
+        }
+      }
+
+      return uniqueCategories;
     },
 
     getProductsByTenant: (includeInactive = false) => {
