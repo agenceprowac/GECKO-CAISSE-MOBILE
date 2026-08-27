@@ -306,7 +306,7 @@ export const usePOSStore = create<POSState>((set, get) => {
             localProducts: tenantProducts, // Toujours envoyer pour auto-guérison
             localTables: tenantTables,     // Toujours envoyer pour auto-guérison
             localUsers: tenantUsers,       // Toujours envoyer pour auto-guérison
-            localCategories: get().categories.filter(c => c.tenantId === tenantId),
+            localCategories: get().categories.map(c => ({ ...c, tenantId: c.tenantId || tenantId })),
             deletedCategories: state.deletedCategoryIds,
             localStockHistory: tenantStockHistory
           })

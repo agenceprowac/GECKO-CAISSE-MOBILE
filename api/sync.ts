@@ -65,24 +65,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // 0. Synchroniser les catégories locales (uniquement si envoyées par le client)
+    // 0. Synchroniser les catégories locales (en leur attribuant le tenantId courant si manquant)
     if (localCategories !== undefined && Array.isArray(localCategories)) {
       for (const cat of localCategories) {
-        if (!cat.tenantId) continue;
+        const catTenantId = cat.tenantId || tenantId;
         
         await prisma.category.upsert({
           where: { id: cat.id },
           update: {
-            name: cat.name,
-            color: cat.color,
-            icon: cat.icon
+            name: cat.name || 'Général',
+            color: cat.color || null,
+            icon: cat.icon || null
           },
           create: {
             id: cat.id,
-            tenantId: cat.tenantId,
-            name: cat.name,
-            color: cat.color,
-            icon: cat.icon
+            tenantId: catTenantId,
+            name: cat.name || 'Général',
+            color: cat.color || null,
+            icon: cat.icon || null
           }
         });
       }
@@ -91,7 +91,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 1. Enregistrer ou mettre à jour les produits locaux s'il y a lieu
     if (localProducts !== undefined && Array.isArray(localProducts)) {
       for (const prod of localProducts) {
-        let categoryId = prod.categoryId;
+        let categoryId = prod.categoryId || 'cat_default';
+
+        // Auto-guérison : Vérifier si la catégorie existe dans Supabase pour ce tenant pour éviter une violation de clé étrangère
+        const existingCategory = await prisma.category.findUnique({
+          where: { id: categoryId }
+        });
+
+        if (!existingCategory) {
+          await prisma.category.create({
+            data: {
+              id: categoryId,
+              tenantId: tenantId,
+              name: 'Général',
+              color: 'bg-dark-600',
+              icon: 'Tag'
+            }
+          });
+        }
 
         await prisma.product.upsert({
           where: { id: prod.id },
@@ -121,18 +138,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // 2. Synchroniser les tables locales (uniquement si envoyé par le client)
     if (localTables !== undefined && Array.isArray(localTables)) {
+      const localTableIds = localTables.map(t => t.id);
+
+      // Supprimer les commandes associées aux tables supprimées pour éviter les violations de clés étrangères
+      await prisma.order.deleteMany({
+        where: {
+          tenantId: tenantId,
+          tableId: { notIn: localTableIds }
+        }
+      });
+
+      // Supprimer les tables qui ne sont plus dans la liste locale
+      await prisma.table.deleteMany({
+        where: {
+          tenantId: tenantId,
+          id: { notIn: localTableIds }
+        }
+      });
+
       for (const tbl of localTables) {
         await prisma.table.upsert({
           where: { id: tbl.id },
-          update: { 
-            name: tbl.name,
-            isActive: tbl.isActive !== false
-          },
+          update: { name: tbl.name },
           create: {
             id: tbl.id,
             tenantId: tenantId,
-            name: tbl.name,
-            isActive: tbl.isActive !== false
+            name: tbl.name
           }
         });
       }
@@ -140,9 +171,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // 3. Synchroniser les profils utilisateurs (uniquement si envoyé par le client)
     if (localUsers !== undefined && Array.isArray(localUsers)) {
-      // On désactive la suppression brute des utilisateurs pour les mêmes raisons de sécurité.
-      // if (localUsers.length > 0) { ... }
-
       for (const usr of localUsers) {
         // Ignorer l'utilisateur virtuel Super-Admin dans le stockage du tenant
         if (usr.role === 'SUPER_ADMIN') continue;
@@ -167,11 +195,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // 4. Synchroniser l'historique de stock
+    // 4. Synchroniser l'historique de stock (avec vérification d'existence du produit)
     if (localStockHistory && Array.isArray(localStockHistory)) {
       for (const entry of localStockHistory) {
         const entryExists = await prisma.stockHistoryEntry.findUnique({ where: { id: entry.id } });
         if (!entryExists) {
+          const productExists = await prisma.product.findUnique({ where: { id: entry.productId } });
+          if (!productExists) {
+            console.warn(`Historique de stock ignoré pour le produit introuvable: ${entry.productId}`);
+            continue;
+          }
+
           await prisma.stockHistoryEntry.create({
             data: {
               id: entry.id,
