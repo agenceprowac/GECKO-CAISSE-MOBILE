@@ -828,7 +828,7 @@ export const usePOSStore = create<POSState>((set, get) => {
       const updatedCategories = [...get().categories, { ...category, id: 'cat_' + crypto.randomUUID(), tenantId }];
       set({ categories: updatedCategories }); // Sync plus tard
       persist({ categories: updatedCategories });
-      get().syncCloudData().catch(console.error);
+      get().syncCloudData(undefined, true).catch(console.error);
     },
 
     updateCategory: (category) => {
@@ -839,7 +839,7 @@ export const usePOSStore = create<POSState>((set, get) => {
       const updatedCategories = get().categories.map(c => c.id === category.id ? updatedCat : c);
       set({ categories: updatedCategories });
       persist({ categories: updatedCategories });
-      get().syncCloudData().catch(console.error);
+      get().syncCloudData(undefined, true).catch(console.error);
     },
 
     deleteCategory: (categoryId) => {
@@ -855,7 +855,7 @@ export const usePOSStore = create<POSState>((set, get) => {
         categories: updatedCategories, 
         deletedCategoryIds: newDeletedIds 
       });
-      get().syncCloudData().catch(console.error);
+      get().syncCloudData(undefined, true).catch(console.error);
     },
 
     // Getters filtered by active tenant
@@ -949,7 +949,7 @@ export const usePOSStore = create<POSState>((set, get) => {
         stockHistory: updatedHistory
       });
 
-      get().syncCloudData().catch(console.error);
+      get().syncCloudData(undefined, true).catch(console.error);
     },
 
     updateStockHistoryEntry: (entryId, newProductId, newQuantity) => {
@@ -1011,7 +1011,7 @@ export const usePOSStore = create<POSState>((set, get) => {
         stockHistory: updatedHistory
       });
 
-      state.syncCloudData().catch(console.error);
+      state.syncCloudData(undefined, true).catch(console.error);
     },
 
     addProduct: (product) => {
@@ -1019,7 +1019,7 @@ export const usePOSStore = create<POSState>((set, get) => {
       const updatedProducts = [...get().products, { ...product, id: 'prd_' + crypto.randomUUID(), tenantId }];
       set({ products: updatedProducts, hasUnsyncedProductsChanges: true });
       persist({ products: updatedProducts });
-      get().syncCloudData().catch(console.error);
+      get().syncCloudData(undefined, true).catch(console.error);
     },
 
     updateProduct: (updatedProduct) => {
@@ -1038,7 +1038,7 @@ export const usePOSStore = create<POSState>((set, get) => {
       const updatedProducts = get().products.map(p => p.id === productId ? { ...p, isAvailable: false } : p);
       set({ products: updatedProducts, hasUnsyncedProductsChanges: true });
       persist({ products: updatedProducts });
-      get().syncCloudData().catch(console.error);
+      get().syncCloudData(undefined, true).catch(console.error);
     },
 
     // Tables actions

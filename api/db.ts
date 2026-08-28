@@ -15,9 +15,9 @@ if (globalForPrisma.prisma) {
   const connectionString = process.env.DATABASE_URL;
   const pool = new Pool({ 
     connectionString,
-    max: 2,
-    idleTimeoutMillis: 1000, // Libérer les connexions inactives très rapidement (1s) pour les autres clients
-    connectionTimeoutMillis: 3000 // Limiter le temps d'attente de connexion à 3s en cas de latence
+    max: 10, // Autoriser jusqu'à 10 connexions simultanées pour gérer les terminaux et caisses en parallèle
+    idleTimeoutMillis: 5000, // Libérer les connexions inactives au bout de 5s
+    connectionTimeoutMillis: 10000 // Laisser 10s max pour obtenir une connexion sous faible latence Supabase
   });
   const adapter = new PrismaPg(pool);
 
