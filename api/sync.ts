@@ -240,7 +240,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
           });
 
-          // Créer les items de la vente
+          // Créer les items de la vente et déduire atomiquement le stock sur Supabase
           for (const item of sale.items) {
             await prisma.saleItem.create({
               data: {
@@ -251,6 +251,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 price: item.product.price
               }
             });
+
+            // Déduction atomique du stock sur Supabase
+            try {
+              await prisma.product.update({
+                where: { id: item.product.id },
+                data: {
+                  stock: {
+                    decrement: Math.round(item.quantity)
+                  }
+                }
+              });
+            } catch (err) {
+              console.warn(`Impossible de déduire le stock pour le produit ${item.product.id}:`, err);
+            }
           }
         }
       }
