@@ -32,7 +32,7 @@ interface POSState {
   isSyncing: boolean;
   hasPendingSync: boolean;
   syncSalesWithServer: () => Promise<void>;
-  syncCloudData: (tenantIdOverride?: string, isUserAction?: boolean) => Promise<void>;
+  syncCloudData: (tenantIdOverride?: string, isUserAction?: boolean, forceSendProducts?: boolean) => Promise<void>;
   hasUnsyncedProductsChanges: boolean;
   hasUnsyncedTablesChanges: boolean;
   hasUnsyncedUsersChanges: boolean;
@@ -276,7 +276,7 @@ export const usePOSStore = create<POSState>((set, get) => {
       await get().syncCloudData(undefined, false);
     },
 
-    syncCloudData: async (tenantIdOverride, isUserAction = false) => {
+    syncCloudData: async (tenantIdOverride, isUserAction = false, forceSendProducts = false) => {
       const state = get();
       if (state.isLocalTestMode) return; // Bloque la synchro en mode bac à sable
       if (state.isSyncing) {
@@ -310,9 +310,9 @@ export const usePOSStore = create<POSState>((set, get) => {
           headers['X-Tenant-Pin'] = state.currentTenant.adminPin;
         }
 
-        // N'envoyer les collections complètes que si des modifications locales non synchronisées ont eu lieu
-        // ou s'il s'agit d'une initialisation/reconnexion (tenantIdOverride présent)
-        const sendProducts = state.hasUnsyncedProductsChanges || Boolean(tenantIdOverride);
+        // N'envoyer les collections complètes que si des modifications locales non synchronisées ont eu lieu,
+        // s'il s'agit d'une initialisation/reconnexion ou d'un envoi forcé (forceSendProducts)
+        const sendProducts = state.hasUnsyncedProductsChanges || Boolean(tenantIdOverride) || forceSendProducts;
         const sendTables = state.hasUnsyncedTablesChanges || Boolean(tenantIdOverride);
         const sendUsers = state.hasUnsyncedUsersChanges || Boolean(tenantIdOverride);
 
@@ -949,7 +949,7 @@ export const usePOSStore = create<POSState>((set, get) => {
         stockHistory: updatedHistory
       });
 
-      get().syncCloudData(undefined, true).catch(console.error);
+      get().syncCloudData(undefined, true, true).catch(console.error);
     },
 
     updateStockHistoryEntry: (entryId, newProductId, newQuantity) => {
@@ -1011,7 +1011,7 @@ export const usePOSStore = create<POSState>((set, get) => {
         stockHistory: updatedHistory
       });
 
-      state.syncCloudData(undefined, true).catch(console.error);
+      state.syncCloudData(undefined, true, true).catch(console.error);
     },
 
     addProduct: (product) => {
@@ -1019,7 +1019,7 @@ export const usePOSStore = create<POSState>((set, get) => {
       const updatedProducts = [...get().products, { ...product, id: 'prd_' + crypto.randomUUID(), tenantId }];
       set({ products: updatedProducts, hasUnsyncedProductsChanges: true });
       persist({ products: updatedProducts });
-      get().syncCloudData(undefined, true).catch(console.error);
+      get().syncCloudData(undefined, true, true).catch(console.error);
     },
 
     updateProduct: (updatedProduct) => {
@@ -1030,7 +1030,7 @@ export const usePOSStore = create<POSState>((set, get) => {
       if (get().isSyncing) {
         set({ hasPendingSync: true });
       } else {
-        get().syncCloudData(undefined, true).catch(console.error);
+        get().syncCloudData(undefined, true, true).catch(console.error);
       }
     },
 
@@ -1038,7 +1038,7 @@ export const usePOSStore = create<POSState>((set, get) => {
       const updatedProducts = get().products.map(p => p.id === productId ? { ...p, isAvailable: false } : p);
       set({ products: updatedProducts, hasUnsyncedProductsChanges: true });
       persist({ products: updatedProducts });
-      get().syncCloudData(undefined, true).catch(console.error);
+      get().syncCloudData(undefined, true, true).catch(console.error);
     },
 
     // Tables actions
