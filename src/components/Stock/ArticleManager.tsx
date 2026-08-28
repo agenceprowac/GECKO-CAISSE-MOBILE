@@ -9,8 +9,8 @@ interface ArticleManagerProps {
 
 export const ArticleManager: React.FC<ArticleManagerProps> = ({ onClose }) => {
   const { currentTenant, products: allProducts, addProduct, updateProduct, addCategory, updateCategory, deleteCategory, showNotification } = usePOSStore();
-  const products = allProducts.filter(p => p.tenantId === currentTenant?.id);
-  const categories = usePOSStore(state => state.getCategoriesByTenant());
+  const products = (allProducts || []).filter(p => p && p.tenantId === currentTenant?.id);
+  const categories = usePOSStore(state => state.getCategoriesByTenant()) || [];
   
   const [search, setSearch] = useState('');
   const [isCreating, setIsCreating] = useState(false);
@@ -25,11 +25,11 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({ onClose }) => {
   const [newPrice, setNewPrice] = useState('');
   const [newPurchasePrice, setNewPurchasePrice] = useState('');
   const [newStock, setNewStock] = useState('0');
-  const [newCategoryId, setNewCategoryId] = useState(categories.length > 0 ? categories[0].id : '');
+  const [newCategoryId, setNewCategoryId] = useState(categories && categories.length > 0 && categories[0] ? categories[0].id : '');
   const [newImage, setNewImage] = useState('');
   const [isAvailable, setIsAvailable] = useState(true);
 
-  const filteredProducts = products.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
+  const filteredProducts = products.filter(p => p && p.name && String(p.name).toLowerCase().includes((search || '').toLowerCase()));
 
   const handleEditClick = (product: Product) => {
     setEditingProduct(product);

@@ -814,13 +814,14 @@ export const usePOSStore = create<POSState>((set, get) => {
       const tenantId = state.currentTenant?.id;
       if (!tenantId) return [];
 
-      // Filtrer les catégories appartenant à ce tenant ou globales, puis dé-dupliquer par nom
-      const rawCategories = state.categories.filter(c => c.tenantId === tenantId || !c.tenantId);
+      // Filtrer les catégories appartenant à ce tenant ou globales, puis dé-dupliquer par nom de façon sécurisée
+      const rawCategories = (state.categories || []).filter(c => c && (c.tenantId === tenantId || !c.tenantId));
       const seenNames = new Set<string>();
       const uniqueCategories: Category[] = [];
 
       for (const cat of rawCategories) {
-        const lowerName = cat.name.trim().toLowerCase();
+        if (!cat || !cat.name) continue;
+        const lowerName = String(cat.name).trim().toLowerCase();
         if (!seenNames.has(lowerName)) {
           seenNames.add(lowerName);
           uniqueCategories.push({ ...cat, tenantId: cat.tenantId || tenantId });
