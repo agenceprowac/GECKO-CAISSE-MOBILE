@@ -7,7 +7,7 @@ interface PaymentModalProps {
 }
 
 export const PaymentModal: React.FC<PaymentModalProps> = ({ onClose }) => {
-  const { total, clearCart, cart, updateStock, showNotification, addSale, currentUser, currentTenant } = usePOSStore();
+  const { total, clearCart, cart, showNotification, addSale, currentUser, currentTenant } = usePOSStore();
   const [amountGiven, setAmountGiven] = useState<string>('');
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CARD' | 'MOBILE'>('CASH');
 
@@ -24,12 +24,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ onClose }) => {
   const quickAmounts = [1000, 2000, 5000, 10000, 20000];
 
   const handleValidate = () => {
-    // 1. Déduire les stocks pour chaque article vendu D'ABORD (localement)
-    cart.forEach(item => {
-      updateStock(item.product.id, -item.quantity);
-    });
-
-    // 2. Enregistrer la vente dans l'historique (ceci va déclencher la synchronisation Cloud qui va capturer l'état local mis à jour juste au-dessus)
+    // Enregistrer la vente (ceci déduit les stocks atomiquement et enregistre l'historique)
     if (currentUser) {
       addSale({
         sellerId: currentUser.id,

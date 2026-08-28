@@ -30,6 +30,7 @@ interface POSState {
   isOnline: boolean;
   setOnlineStatus: (status: boolean) => void;
   isSyncing: boolean;
+  hasPendingSync: boolean;
   syncSalesWithServer: () => Promise<void>;
   syncCloudData: (tenantIdOverride?: string) => Promise<void>;
   hasUnsyncedProductsChanges: boolean;
@@ -251,6 +252,7 @@ export const usePOSStore = create<POSState>((set, get) => {
 
     isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
     isSyncing: false,
+    hasPendingSync: false,
     hasUnsyncedProductsChanges: persistedData.hasUnsyncedProductsChanges || false,
     hasUnsyncedTablesChanges: persistedData.hasUnsyncedTablesChanges || false,
     hasUnsyncedUsersChanges: persistedData.hasUnsyncedUsersChanges || false,
@@ -269,14 +271,14 @@ export const usePOSStore = create<POSState>((set, get) => {
     syncCloudData: async (tenantIdOverride) => {
       const state = get();
       if (state.isLocalTestMode) return; // Bloque la synchro en mode bac à sable
-      if (state.isSyncing) return; // Empêche les exécutions parallèles qui causent des écrasements
+      if (state.isSyncing) {
+        set({ hasPendingSync: true });
+        return; // File d'attente : relancera automatiquement à la fin de la synchro en cours
+      }
 
       const tenantId = tenantIdOverride || state.currentTenant?.id;
       if (!tenantId) return;
 
-      // En mode local, le serveur est joignable même sans internet,
-      // on essaie toujours d'appeler l'API. Le try/catch gérera l'échec si le serveur est éteint.
-      
       set({ isSyncing: true });
 
       try {
@@ -350,7 +352,6 @@ export const usePOSStore = create<POSState>((set, get) => {
         const finalStockHistory = [...currentState.stockHistory, ...missingServerHistory];
 
         // 3. Fusionner les Produits, Tables et Utilisateurs
-        // Le serveur est la source de vérité : il a déjà traité et fusionné nos modifications locales envoyées.
         const otherTenantsProducts = currentState.products.filter(p => p.tenantId !== tenantId);
         const finalProducts = [...otherTenantsProducts, ...data.products];
 
@@ -361,10 +362,7 @@ export const usePOSStore = create<POSState>((set, get) => {
         const finalUsers = [...otherTenantsUsers, ...data.users];
 
         // 4. Fusionner les Catégories
-        // Les catégories mock n'ont pas de tenantId, on les conserve.
         const otherCategories = currentState.categories.filter(c => c.tenantId !== tenantId);
-        // On remplace celles du tenant par celles du serveur (le serveur est source de vérité si pas de "hasUnsyncedCategoriesChanges" que je n'ai pas implémenté)
-        // Simplification : on prend les données du serveur pour ce tenant, et on garde celles d'autres tenants + globales.
         const finalCategories = [...otherCategories, ...(data.categories || [])];
 
         set({
@@ -374,14 +372,13 @@ export const usePOSStore = create<POSState>((set, get) => {
           categories: finalCategories,
           stockHistory: finalStockHistory,
           sales: finalSales,
-          isSyncing: false,
           deletedCategoryIds: [],
           hasUnsyncedProductsChanges: false,
           hasUnsyncedTablesChanges: false,
           hasUnsyncedUsersChanges: false
         });
 
-        // Mettre à jour le tenant actuel s'il a changé (ex: son plan ou statut modifié par le Super-Admin)
+        // Mettre à jour le tenant actuel s'il a changé
         if (data.tenant && state.currentTenant && data.tenant.id === state.currentTenant.id) {
           set({ currentTenant: data.tenant });
         }
@@ -409,10 +406,16 @@ export const usePOSStore = create<POSState>((set, get) => {
 
       } catch (err: any) {
         console.error('Échec de la synchronisation cloud :', err);
-        set({ isSyncing: false });
-        // En cas d'erreur de réseau (ex: serveur injoignable, coupure WiFi)
+        // En cas d'erreur de réseau
         if (err.message === 'Failed to fetch' || err.name === 'TypeError' || !navigator.onLine) {
           set({ isOnline: false });
+        }
+      } finally {
+        set({ isSyncing: false });
+        // Si une modification est survenue pendant la synchro réseau, on relance automatiquement
+        if (get().hasPendingSync) {
+          set({ hasPendingSync: false });
+          get().syncCloudData().catch(console.error);
         }
       }
     },
@@ -1045,6 +1048,7 @@ export const usePOSStore = create<POSState>((set, get) => {
     setCurrentUser: (user) => set({ currentUser: user }),
 
     addSale: (newSale) => {
+      const state = get();
       const now = new Date();
       const formatter = new Intl.DateTimeFormat('fr-FR', {
         day: '2-digit',
@@ -1055,9 +1059,37 @@ export const usePOSStore = create<POSState>((set, get) => {
         second: '2-digit'
       });
       const formattedDate = `Le ${formatter.format(now).replace(',', ' à')}`;
-      const tenantId = get().currentTenant?.id;
-      const isTest = get().isLocalTestMode;
-      
+      const tenantId = state.currentTenant?.id;
+      const isTest = state.isLocalTestMode;
+
+      // 1. Calculer le total des quantités vendues par produit
+      const soldQuantitiesMap = new Map<string, number>();
+      newSale.items.forEach(item => {
+        const currentQty = soldQuantitiesMap.get(item.product.id) || 0;
+        soldQuantitiesMap.set(item.product.id, currentQty + item.quantity);
+      });
+
+      // 2. Déduire le stock des produits et générer l'historique des mouvements de stock
+      const newStockHistoryEntries: StockHistoryEntry[] = [];
+      const updatedProducts = state.products.map(p => {
+        const qtySold = soldQuantitiesMap.get(p.id);
+        if (qtySold && qtySold > 0) {
+          newStockHistoryEntries.push({
+            id: 'stk_' + crypto.randomUUID(),
+            productId: p.id,
+            productName: p.name,
+            quantityAdded: -qtySold,
+            userLabel: `Vente (${newSale.sellerName})`,
+            createdAt: formattedDate,
+            tenantId: p.tenantId || tenantId,
+            rawDate: now.toISOString(),
+            isTest
+          });
+          return { ...p, stock: Math.max(0, p.stock - qtySold) };
+        }
+        return p;
+      });
+
       const updatedSales = [
         {
           ...newSale,
@@ -1068,15 +1100,26 @@ export const usePOSStore = create<POSState>((set, get) => {
           isTest,
           rawDate: now.toISOString()
         },
-        ...get().sales
+        ...state.sales
       ];
 
-      set({ sales: updatedSales });
-      persist({ sales: updatedSales });
+      const updatedHistory = [...newStockHistoryEntries, ...state.stockHistory];
 
-      persist({ sales: updatedSales });
+      // Mise à jour atomique unique dans le store Zustand
+      set({ 
+        sales: updatedSales,
+        products: updatedProducts,
+        stockHistory: updatedHistory,
+        hasUnsyncedProductsChanges: isTest ? state.hasUnsyncedProductsChanges : true
+      });
 
-      // Synchronisation immédiate vers la BDD locale en tâche de fond
+      persist({ 
+        sales: updatedSales,
+        products: updatedProducts,
+        stockHistory: updatedHistory
+      });
+
+      // Déclencher une seule synchronisation cloud globale
       get().syncSalesWithServer();
     },
 
