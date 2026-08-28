@@ -368,36 +368,43 @@ export const usePOSStore = create<POSState>((set, get) => {
         const missingServerHistory = data.stockHistory.filter((h: any) => !localHistoryIds.has(h.id));
         const finalStockHistory = [...currentState.stockHistory, ...missingServerHistory];
 
-        // 3. Fusionner les Produits de façon sécurisée (conserver le stock local si des modifs non synchronisées existent)
+        // 3. Fusionner les Produits de façon sécurisée (correspondance par ID et par Nom pour éliminer les doublons)
         const otherTenantsProducts = currentState.products.filter(p => p.tenantId !== tenantId);
-        const localTenantProductMap = new Map(
-          currentState.products
-            .filter(p => p.tenantId === tenantId)
-            .map(p => [p.id, p])
-        );
+        const localTenantProducts = currentState.products.filter(p => p.tenantId === tenantId);
+        
+        const localTenantProductMapById = new Map(localTenantProducts.map(p => [p.id, p]));
+        const localTenantProductMapByName = new Map(localTenantProducts.map(p => [(p.name || '').trim().toLowerCase(), p]));
 
         const serverProductIds = new Set((data.products || []).map((p: any) => p.id));
-        // Conserver les produits créés localement qui ne sont pas encore sur le serveur
-        const unsyncedLocalProducts = currentState.products.filter(
-          p => p.tenantId === tenantId && !serverProductIds.has(p.id)
+        const serverProductNames = new Set((data.products || []).map((p: any) => (p.name || '').trim().toLowerCase()));
+
+        // Conserver les produits locaux non encore présents sur le serveur
+        const unsyncedLocalProducts = localTenantProducts.filter(
+          p => !serverProductIds.has(p.id) && !serverProductNames.has((p.name || '').trim().toLowerCase())
         );
 
         const mergedServerProducts = (data.products || []).map((sp: any) => {
-          const local = localTenantProductMap.get(sp.id);
-          if (!local) return sp;
-          // Si nous avons des modifications locales non encore confirmées, conserver le stock local
+          const spNameKey = (sp.name || '').trim().toLowerCase();
+          const local = localTenantProductMapById.get(sp.id) || localTenantProductMapByName.get(spNameKey);
+          
+          if (!local) return { ...sp, tenantId };
+          
+          // Si des modifications locales sont en cours et n'ont pas encore été envoyées, conserver le stock local
           if (currentState.hasUnsyncedProductsChanges) {
             return {
               ...sp,
+              tenantId,
               stock: local.stock,
               isAvailable: local.isAvailable !== sp.isAvailable ? local.isAvailable : sp.isAvailable,
             };
           }
           return {
             ...sp,
+            tenantId,
             isAvailable: local.isAvailable !== sp.isAvailable ? local.isAvailable : sp.isAvailable,
           };
         });
+
         const finalProducts = [...otherTenantsProducts, ...mergedServerProducts, ...unsyncedLocalProducts];
 
         const otherTenantsTables = currentState.tables.filter(t => t.tenantId !== tenantId);

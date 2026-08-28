@@ -128,31 +128,50 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           const cleanStock = Math.round(Number(prod.stock) || 0);
           const cleanPrice = Number(prod.price) || 0;
           const cleanPurchasePrice = Number(prod.purchasePrice) || 0;
+          const prodNameTrimmed = String(prod.name || '').trim();
 
-          await prisma.product.upsert({
-            where: { id: prod.id },
-            update: {
-              tenantId: tenantId, // Forcer l'association au tenantId en base de données Supabase
-              name: prod.name,
-              price: cleanPrice,
-              purchasePrice: cleanPurchasePrice,
-              stock: cleanStock,
-              isAvailable: prod.isAvailable !== false,
-              image: prod.image || null,
-              categoryId: categoryId
-            },
-            create: {
-              id: prod.id,
+          // Rechercher si le produit existe déjà dans Supabase par son ID OU par son nom (insensible à la casse)
+          const existingProd = await prisma.product.findFirst({
+            where: {
               tenantId: tenantId,
-              categoryId: categoryId,
-              name: prod.name,
-              price: cleanPrice,
-              purchasePrice: cleanPurchasePrice,
-              stock: cleanStock,
-              isAvailable: prod.isAvailable !== false,
-              image: prod.image || null
+              OR: [
+                { id: prod.id },
+                { name: { equals: prodNameTrimmed, mode: 'insensitive' } }
+              ]
             }
           });
+
+          if (existingProd) {
+            // Mettre à jour le produit existant dans Supabase
+            await prisma.product.update({
+              where: { id: existingProd.id },
+              data: {
+                tenantId: tenantId,
+                name: prodNameTrimmed || existingProd.name,
+                price: cleanPrice,
+                purchasePrice: cleanPurchasePrice,
+                stock: cleanStock,
+                isAvailable: prod.isAvailable !== false,
+                image: prod.image || existingProd.image,
+                categoryId: categoryId
+              }
+            });
+          } else {
+            // Créer le nouveau produit dans Supabase
+            await prisma.product.create({
+              data: {
+                id: prod.id,
+                tenantId: tenantId,
+                categoryId: categoryId,
+                name: prodNameTrimmed || 'Nouveau produit',
+                price: cleanPrice,
+                purchasePrice: cleanPurchasePrice,
+                stock: cleanStock,
+                isAvailable: prod.isAvailable !== false,
+                image: prod.image || null
+              }
+            });
+          }
         } catch (prodErr) {
           console.error(`Erreur d'enregistrement du produit Supabase (${prod.id} - ${prod.name}):`, prodErr);
         }
