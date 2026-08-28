@@ -15,9 +15,11 @@ const iconMap: Record<string, React.ReactNode> = {
 export const ProductGrid: React.FC = () => {
   const { addToCart, getProductsByTenant, getCategoriesByTenant } = usePOSStore();
   const categories = getCategoriesByTenant();
-  const [activeCategory, setActiveCategory] = useState<string>(categories.length > 0 ? categories[0].id : '');
+  const [activeCategoryState, setActiveCategoryState] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const products = getProductsByTenant();
+
+  const activeCategory = activeCategoryState || (categories.length > 0 ? categories[0].id : '');
 
   const filteredProducts = useMemo(() => {
     let result = [];
@@ -58,7 +60,7 @@ export const ProductGrid: React.FC = () => {
         {categories.map(cat => (
           <button
             key={cat.id}
-            onClick={() => setActiveCategory(cat.id)}
+            onClick={() => setActiveCategoryState(cat.id)}
             className={`flex flex-col items-center justify-center min-w-[90px] h-[90px] rounded-xl transition-transform active:scale-95 ${
               activeCategory === cat.id ? cat.color + ' text-white' : 'bg-dark-700 text-gray-300'
             }`}
