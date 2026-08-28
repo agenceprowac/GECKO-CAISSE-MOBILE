@@ -359,9 +359,25 @@ export const usePOSStore = create<POSState>((set, get) => {
         const missingServerHistory = data.stockHistory.filter((h: any) => !localHistoryIds.has(h.id));
         const finalStockHistory = [...currentState.stockHistory, ...missingServerHistory];
 
-        // 3. Fusionner les Produits, Tables et Utilisateurs
+        // 3. Fusionner les Produits en préservant les changements locaux faits pendant le fetch réseau
+        // (race condition : un clic "Désactiver" peut survenir pendant que la requête fetch est en vol)
         const otherTenantsProducts = currentState.products.filter(p => p.tenantId !== tenantId);
-        const finalProducts = [...otherTenantsProducts, ...data.products];
+        const localTenantProductMap = new Map(
+          currentState.products
+            .filter(p => p.tenantId === tenantId)
+            .map(p => [p.id, p])
+        );
+        const mergedServerProducts = (data.products || []).map((sp: any) => {
+          const local = localTenantProductMap.get(sp.id);
+          if (!local) return sp;
+          // Si isAvailable local diffère du serveur, c'est que l'utilisateur vient de le changer
+          // pendant le fetch → on conserve la valeur locale (elle sera envoyée au prochain sync)
+          return {
+            ...sp,
+            isAvailable: local.isAvailable !== sp.isAvailable ? local.isAvailable : sp.isAvailable,
+          };
+        });
+        const finalProducts = [...otherTenantsProducts, ...mergedServerProducts];
 
         const otherTenantsTables = currentState.tables.filter(t => t.tenantId !== tenantId);
         const finalTables = [...otherTenantsTables, ...data.tables];
@@ -989,7 +1005,13 @@ export const usePOSStore = create<POSState>((set, get) => {
       const updatedProducts = get().products.map(p => p.id === updatedProduct.id ? updatedProduct : p);
       set({ products: updatedProducts, hasUnsyncedProductsChanges: true });
       persist({ products: updatedProducts });
-      get().syncCloudData().catch(console.error);
+      // Forcer hasPendingSync pour garantir un 2e sync si le 1er est déjà en cours
+      // (évite la race condition où le 1er sync ramène une valeur stale du serveur)
+      if (get().isSyncing) {
+        set({ hasPendingSync: true });
+      } else {
+        get().syncCloudData().catch(console.error);
+      }
     },
 
     deleteProduct: (productId) => {
