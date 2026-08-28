@@ -116,6 +116,14 @@ const loadPersistedData = () => {
       if (!parsed.tableCarts) parsed.tableCarts = {};
       if (!parsed.cart) parsed.cart = [];
       if (!parsed.deletedCategoryIds) parsed.deletedCategoryIds = [];
+      // Normalisation des catégories : color et icon ne peuvent pas être null côté frontend
+      if (parsed.categories && Array.isArray(parsed.categories)) {
+        parsed.categories = parsed.categories.map((c: any) => ({
+          ...c,
+          color: c.color || 'bg-dark-600',
+          icon: c.icon || 'Tag',
+        }));
+      }
       return parsed;
     }
   } catch (e) {
@@ -361,9 +369,14 @@ export const usePOSStore = create<POSState>((set, get) => {
         const otherTenantsUsers = currentState.users.filter(u => u.tenantId !== tenantId);
         const finalUsers = [...otherTenantsUsers, ...data.users];
 
-        // 4. Fusionner les Catégories
+        // 4. Fusionner les Catégories (normalisation : color et icon ne peuvent pas être null côté frontend)
         const otherCategories = currentState.categories.filter(c => c.tenantId !== tenantId);
-        const finalCategories = [...otherCategories, ...(data.categories || [])];
+        const normalizedServerCategories = (data.categories || []).map((c: any) => ({
+          ...c,
+          color: c.color || 'bg-dark-600',
+          icon: c.icon || 'Tag',
+        }));
+        const finalCategories = [...otherCategories, ...normalizedServerCategories];
 
         set({
           products: finalProducts,

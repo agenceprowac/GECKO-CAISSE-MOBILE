@@ -10,6 +10,7 @@ import { ReportsPage } from '../Reports/ReportsPage';
 import { TablesPage } from '../Tables/TablesPage';
 import { UsersPage } from '../Users/UsersPage';
 import { ProfilePage } from '../Users/ProfilePage';
+import { ErrorBoundary } from '../common/ErrorBoundary';
 import { Menu, Users, X, Wifi, WifiOff, RefreshCw, PackagePlus, Tag, Sun, Moon } from 'lucide-react';
 import { usePOSStore } from '../../store';
 
@@ -217,8 +218,16 @@ export const POSLayout: React.FC = () => {
         onArticleClick={() => setShowArticleManager(true)}
         onLogout={() => setCurrentUser(null)}
       />
-      {showStockManager && <StockManager onClose={() => setShowStockManager(false)} />}
-      {showArticleManager && <ArticleManager onClose={() => setShowArticleManager(false)} />}
+      {showStockManager && (
+        <ErrorBoundary componentName="Gestionnaire de Stocks" onClose={() => setShowStockManager(false)}>
+          <StockManager onClose={() => setShowStockManager(false)} />
+        </ErrorBoundary>
+      )}
+      {showArticleManager && (
+        <ErrorBoundary componentName="Configuration Articles" onClose={() => setShowArticleManager(false)}>
+          <ArticleManager onClose={() => setShowArticleManager(false)} />
+        </ErrorBoundary>
+      )}
       {showPayment && <PaymentModal onClose={() => setShowPayment(false)} />}
       {showTableSelector && <TableSelector onClose={() => setShowTableSelector(false)} />}
     </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { X, Plus, Check, Edit2, Trash2, Tag } from 'lucide-react';
 import { usePOSStore } from '../../store';
 import type { Product } from '../../types';
@@ -8,9 +8,41 @@ interface ArticleManagerProps {
 }
 
 export const ArticleManager: React.FC<ArticleManagerProps> = ({ onClose }) => {
-  const { currentTenant, products: allProducts, addProduct, updateProduct, addCategory, updateCategory, deleteCategory, showNotification } = usePOSStore();
-  const products = (allProducts || []).filter(p => p && p.tenantId === currentTenant?.id);
-  const categories = usePOSStore(state => state.getCategoriesByTenant()) || [];
+  // Lecture des données PRIMITIVES stables depuis le store (anti-pattern évité : ne jamais sélectionner une fonction depuis Zustand)
+  const currentTenant = usePOSStore(state => state.currentTenant);
+  const allCategories = usePOSStore(state => state.categories);
+  const allProducts = usePOSStore(state => state.products);
+  const addProduct = usePOSStore(state => state.addProduct);
+  const updateProduct = usePOSStore(state => state.updateProduct);
+  const addCategory = usePOSStore(state => state.addCategory);
+  const updateCategory = usePOSStore(state => state.updateCategory);
+  const deleteCategory = usePOSStore(state => state.deleteCategory);
+  const showNotification = usePOSStore(state => state.showNotification);
+
+  const tenantId = currentTenant?.id;
+
+  // Filtrage local des produits par tenant
+  const products = useMemo(
+    () => (allProducts || []).filter(p => p && p.tenantId === tenantId),
+    [allProducts, tenantId]
+  );
+
+  // Filtrage local des catégories par tenant (sans boucle infinie)
+  const categories = useMemo(() => {
+    if (!tenantId) return [];
+    const raw = (allCategories || []).filter(c => c && (c.tenantId === tenantId || !c.tenantId));
+    const seenNames = new Set<string>();
+    const unique: typeof raw = [];
+    for (const cat of raw) {
+      if (!cat?.name) continue;
+      const key = String(cat.name).trim().toLowerCase();
+      if (!seenNames.has(key)) {
+        seenNames.add(key);
+        unique.push({ ...cat, tenantId: cat.tenantId || tenantId });
+      }
+    }
+    return unique;
+  }, [allCategories, tenantId]);
   
   const [search, setSearch] = useState('');
   const [isCreating, setIsCreating] = useState(false);
@@ -25,7 +57,7 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({ onClose }) => {
   const [newPrice, setNewPrice] = useState('');
   const [newPurchasePrice, setNewPurchasePrice] = useState('');
   const [newStock, setNewStock] = useState('0');
-  const [newCategoryId, setNewCategoryId] = useState(categories?.[0]?.id || '');
+  const [newCategoryId, setNewCategoryId] = useState('');
   const [newImage, setNewImage] = useState('');
   const [isAvailable, setIsAvailable] = useState(true);
 
@@ -395,10 +427,11 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({ onClose }) => {
               <div>
                 <label className="block text-gray-400 mb-2 font-medium">Catégorie</label>
                 <select 
-                  value={newCategoryId}
+                  value={newCategoryId || (categories?.[0]?.id || '')}
                   onChange={(e) => setNewCategoryId(e.target.value)}
                   className="w-full px-4 py-3 bg-dark-800 border border-dark-700 rounded-xl focus:outline-none focus:border-primary text-white font-semibold"
                 >
+                  <option value="" disabled>-- Sélectionner une catégorie --</option>
                   {categories.map(cat => (
                     <option key={cat.id} value={cat.id}>{cat.name}</option>
                   ))}
