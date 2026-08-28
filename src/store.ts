@@ -293,12 +293,12 @@ export const usePOSStore = create<POSState>((set, get) => {
       set({ isSyncing: true });
 
       try {
-        // Filtrer les données locales appartenant à ce tenant (exclure le mode test)
-        const unsyncedSales = state.sales.filter(s => s.tenantId === tenantId && !s.synced && !s.isTest);
-        const tenantProducts = state.products.filter(p => p.tenantId === tenantId);
-        const tenantTables = state.tables.filter(t => t.tenantId === tenantId);
-        const tenantUsers = state.users.filter(u => u.tenantId === tenantId);
-        const tenantStockHistory = state.stockHistory.filter(h => h.tenantId === tenantId && !h.isTest);
+        // Filtrer les données locales appartenant à ce tenant (attribuer tenantId par défaut si manquant)
+        const unsyncedSales = state.sales.filter(s => (s.tenantId === tenantId || !s.tenantId) && !s.synced && !s.isTest);
+        const tenantProducts = state.products.map(p => ({ ...p, tenantId: p.tenantId || tenantId })).filter(p => p.tenantId === tenantId);
+        const tenantTables = state.tables.map(t => ({ ...t, tenantId: t.tenantId || tenantId })).filter(t => t.tenantId === tenantId);
+        const tenantUsers = state.users.map(u => ({ ...u, tenantId: u.tenantId || tenantId })).filter(u => u.tenantId === tenantId);
+        const tenantStockHistory = state.stockHistory.filter(h => (h.tenantId === tenantId || !h.tenantId) && !h.isTest);
 
         const headers: Record<string, string> = {
           'Content-Type': 'application/json'

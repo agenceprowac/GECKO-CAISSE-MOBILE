@@ -110,29 +110,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           });
         }
 
-        await prisma.product.upsert({
-          where: { id: prod.id },
-          update: {
-            name: prod.name,
-            price: prod.price,
-            purchasePrice: prod.purchasePrice || 0,
-            stock: prod.stock,
-            isAvailable: prod.isAvailable !== false, // Produit disponible par défaut sauf si désactivé explicitement (false)
-            image: prod.image || null,
-            categoryId: categoryId
-          },
-          create: {
-            id: prod.id,
-            tenantId: tenantId,
-            categoryId: categoryId,
-            name: prod.name,
-            price: prod.price,
-            purchasePrice: prod.purchasePrice || 0,
-            stock: prod.stock,
-            isAvailable: prod.isAvailable !== false, // Même logique pour la création
-            image: prod.image || null
-          }
-        });
+        try {
+          await prisma.product.upsert({
+            where: { id: prod.id },
+            update: {
+              tenantId: tenantId, // Forcer l'association au tenantId en base de données Supabase
+              name: prod.name,
+              price: prod.price,
+              purchasePrice: prod.purchasePrice || 0,
+              stock: prod.stock,
+              isAvailable: prod.isAvailable !== false,
+              image: prod.image || null,
+              categoryId: categoryId
+            },
+            create: {
+              id: prod.id,
+              tenantId: tenantId,
+              categoryId: categoryId,
+              name: prod.name,
+              price: prod.price,
+              purchasePrice: prod.purchasePrice || 0,
+              stock: prod.stock,
+              isAvailable: prod.isAvailable !== false,
+              image: prod.image || null
+            }
+          });
+        } catch (prodErr) {
+          console.error(`Erreur d'enregistrement du produit Supabase (${prod.id} - ${prod.name}):`, prodErr);
+        }
       }
     }
 
