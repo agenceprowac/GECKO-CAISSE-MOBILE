@@ -32,7 +32,7 @@ interface POSState {
   isSyncing: boolean;
   hasPendingSync: boolean;
   syncSalesWithServer: () => Promise<void>;
-  syncCloudData: (tenantIdOverride?: string) => Promise<void>;
+  syncCloudData: (tenantIdOverride?: string, isUserAction?: boolean) => Promise<void>;
   hasUnsyncedProductsChanges: boolean;
   hasUnsyncedTablesChanges: boolean;
   hasUnsyncedUsersChanges: boolean;
@@ -273,15 +273,18 @@ export const usePOSStore = create<POSState>((set, get) => {
     syncSalesWithServer: async () => {
       const state = get();
       if (state.isLocalTestMode) return; // Bloque la synchro en mode bac à sable
-      await get().syncCloudData();
+      await get().syncCloudData(undefined, false);
     },
 
-    syncCloudData: async (tenantIdOverride) => {
+    syncCloudData: async (tenantIdOverride, isUserAction = false) => {
       const state = get();
       if (state.isLocalTestMode) return; // Bloque la synchro en mode bac à sable
       if (state.isSyncing) {
-        set({ hasPendingSync: true });
-        return; // File d'attente : relancera automatiquement à la fin de la synchro en cours
+        // Ne placer en attente (hasPendingSync) que si l'action provient d'une modification utilisateur explicite
+        if (isUserAction) {
+          set({ hasPendingSync: true });
+        }
+        return; // Ignorer le polling passif si une synchro est déjà en cours pour éviter de tourner en boucle
       }
 
       const tenantId = tenantIdOverride || state.currentTenant?.id;
@@ -447,10 +450,10 @@ export const usePOSStore = create<POSState>((set, get) => {
         }
       } finally {
         set({ isSyncing: false });
-        // Si une modification est survenue pendant la synchro réseau, on relance automatiquement
+        // Relancer uniquement si une modification utilisateur explicite a eu lieu pendant le fetch
         if (get().hasPendingSync) {
           set({ hasPendingSync: false });
-          get().syncCloudData().catch(console.error);
+          get().syncCloudData(undefined, true).catch(console.error);
         }
       }
     },
@@ -1012,11 +1015,10 @@ export const usePOSStore = create<POSState>((set, get) => {
       set({ products: updatedProducts, hasUnsyncedProductsChanges: true });
       persist({ products: updatedProducts });
       // Forcer hasPendingSync pour garantir un 2e sync si le 1er est déjà en cours
-      // (évite la race condition où le 1er sync ramène une valeur stale du serveur)
       if (get().isSyncing) {
         set({ hasPendingSync: true });
       } else {
-        get().syncCloudData().catch(console.error);
+        get().syncCloudData(undefined, true).catch(console.error);
       }
     },
 
