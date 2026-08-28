@@ -307,15 +307,21 @@ export const usePOSStore = create<POSState>((set, get) => {
           headers['X-Tenant-Pin'] = state.currentTenant.adminPin;
         }
 
+        // N'envoyer les collections complètes que si des modifications locales non synchronisées ont eu lieu
+        // ou s'il s'agit d'une initialisation/reconnexion (tenantIdOverride présent)
+        const sendProducts = state.hasUnsyncedProductsChanges || Boolean(tenantIdOverride);
+        const sendTables = state.hasUnsyncedTablesChanges || Boolean(tenantIdOverride);
+        const sendUsers = state.hasUnsyncedUsersChanges || Boolean(tenantIdOverride);
+
         const response = await fetch('/api/sync', {
           method: 'POST',
           headers,
           body: JSON.stringify({
             tenantId,
             localSales: unsyncedSales,
-            localProducts: tenantProducts, // Toujours envoyer pour auto-guérison
-            localTables: tenantTables,     // Toujours envoyer pour auto-guérison
-            localUsers: tenantUsers,       // Toujours envoyer pour auto-guérison
+            localProducts: sendProducts ? tenantProducts : undefined,
+            localTables: sendTables ? tenantTables : undefined,
+            localUsers: sendUsers ? tenantUsers : undefined,
             localCategories: get().categories.map(c => ({ ...c, tenantId: c.tenantId || tenantId })),
             deletedCategories: state.deletedCategoryIds,
             localStockHistory: tenantStockHistory
@@ -1142,11 +1148,12 @@ export const usePOSStore = create<POSState>((set, get) => {
       const updatedHistory = [...newStockHistoryEntries, ...state.stockHistory];
 
       // Mise à jour atomique unique dans le store Zustand
+      // Note : La déduction de stock pour les ventes est effectuée par l'API via localSales, ne pas forcer true
       set({ 
         sales: updatedSales,
         products: updatedProducts,
         stockHistory: updatedHistory,
-        hasUnsyncedProductsChanges: isTest ? state.hasUnsyncedProductsChanges : true
+        hasUnsyncedProductsChanges: state.hasUnsyncedProductsChanges
       });
 
       persist({ 

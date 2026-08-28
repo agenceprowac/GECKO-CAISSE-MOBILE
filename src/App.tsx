@@ -72,7 +72,7 @@ function App() {
     
     const interval = setInterval(() => {
       syncSalesWithServer();
-    }, 15000); // toutes les 15 secondes
+    }, 10000); // toutes les 10 secondes (rafraîchissement automatique)
 
     return () => clearInterval(interval);
   }, [currentTenant, isAuthenticatingSuperAdmin, syncSalesWithServer]);
