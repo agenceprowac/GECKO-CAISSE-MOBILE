@@ -368,25 +368,37 @@ export const usePOSStore = create<POSState>((set, get) => {
         const missingServerHistory = data.stockHistory.filter((h: any) => !localHistoryIds.has(h.id));
         const finalStockHistory = [...currentState.stockHistory, ...missingServerHistory];
 
-        // 3. Fusionner les Produits en préservant les changements locaux faits pendant le fetch réseau
-        // (race condition : un clic "Désactiver" peut survenir pendant que la requête fetch est en vol)
+        // 3. Fusionner les Produits de façon sécurisée (conserver le stock local si des modifs non synchronisées existent)
         const otherTenantsProducts = currentState.products.filter(p => p.tenantId !== tenantId);
         const localTenantProductMap = new Map(
           currentState.products
             .filter(p => p.tenantId === tenantId)
             .map(p => [p.id, p])
         );
+
+        const serverProductIds = new Set((data.products || []).map((p: any) => p.id));
+        // Conserver les produits créés localement qui ne sont pas encore sur le serveur
+        const unsyncedLocalProducts = currentState.products.filter(
+          p => p.tenantId === tenantId && !serverProductIds.has(p.id)
+        );
+
         const mergedServerProducts = (data.products || []).map((sp: any) => {
           const local = localTenantProductMap.get(sp.id);
           if (!local) return sp;
-          // Si isAvailable local diffère du serveur, c'est que l'utilisateur vient de le changer
-          // pendant le fetch → on conserve la valeur locale (elle sera envoyée au prochain sync)
+          // Si nous avons des modifications locales non encore confirmées, conserver le stock local
+          if (currentState.hasUnsyncedProductsChanges) {
+            return {
+              ...sp,
+              stock: local.stock,
+              isAvailable: local.isAvailable !== sp.isAvailable ? local.isAvailable : sp.isAvailable,
+            };
+          }
           return {
             ...sp,
             isAvailable: local.isAvailable !== sp.isAvailable ? local.isAvailable : sp.isAvailable,
           };
         });
-        const finalProducts = [...otherTenantsProducts, ...mergedServerProducts];
+        const finalProducts = [...otherTenantsProducts, ...mergedServerProducts, ...unsyncedLocalProducts];
 
         const otherTenantsTables = currentState.tables.filter(t => t.tenantId !== tenantId);
         const finalTables = [...otherTenantsTables, ...data.tables];
@@ -1149,13 +1161,12 @@ export const usePOSStore = create<POSState>((set, get) => {
 
       const updatedHistory = [...newStockHistoryEntries, ...state.stockHistory];
 
-      // Mise à jour atomique unique dans le store Zustand
-      // Note : La déduction de stock pour les ventes est effectuée par l'API via localSales, ne pas forcer true
+      // Mise à jour atomique unique dans le store Zustand (marquer le stock comme modifié pour l'envoyer au serveur)
       set({ 
         sales: updatedSales,
         products: updatedProducts,
         stockHistory: updatedHistory,
-        hasUnsyncedProductsChanges: state.hasUnsyncedProductsChanges
+        hasUnsyncedProductsChanges: isTest ? state.hasUnsyncedProductsChanges : true
       });
 
       persist({ 

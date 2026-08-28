@@ -222,6 +222,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // 5. Enregistrer les ventes locales envoyées par le téléphone (Offline sync)
+    const hasLocalProductsInput = localProducts !== undefined && Array.isArray(localProducts) && localProducts.length > 0;
+
     if (localSales && Array.isArray(localSales)) {
       for (const sale of localSales) {
         const saleExists = await prisma.sale.findUnique({ where: { id: sale.id } });
@@ -240,7 +242,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
           });
 
-          // Créer les items de la vente et déduire atomiquement le stock sur Supabase
+          // Créer les items de la vente et déduire le stock si nécessaire
           for (const item of sale.items) {
             await prisma.saleItem.create({
               data: {
@@ -252,18 +254,48 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               }
             });
 
-            // Déduction atomique du stock sur Supabase
+            // Auto-guérison : Vérifier si le produit existe en base Prisma avant de déduire le stock
             try {
-              await prisma.product.update({
-                where: { id: item.product.id },
-                data: {
-                  stock: {
-                    decrement: Math.round(item.quantity)
-                  }
+              const existingProd = await prisma.product.findUnique({ where: { id: item.product.id } });
+              if (!existingProd) {
+                // Le produit n'existe pas en base de données, on le crée automatiquement
+                const defaultCatId = item.product.categoryId || 'cat_default';
+                const existingCat = await prisma.category.findUnique({ where: { id: defaultCatId } });
+                if (!existingCat) {
+                  await prisma.category.create({
+                    data: {
+                      id: defaultCatId,
+                      tenantId: tenantId,
+                      name: 'Général',
+                      color: 'bg-dark-600',
+                      icon: 'Tag'
+                    }
+                  });
                 }
-              });
+                await prisma.product.create({
+                  data: {
+                    id: item.product.id,
+                    tenantId: tenantId,
+                    categoryId: defaultCatId,
+                    name: item.product.name,
+                    price: item.product.price,
+                    stock: Math.max(0, (item.product.stock || 0)),
+                    isAvailable: item.product.isAvailable !== false
+                  }
+                });
+              } else if (!hasLocalProductsInput) {
+                // Déduire atomiquement le stock seulement si localProducts n'a pas été envoyé dans cette requête
+                await prisma.product.update({
+                  where: { id: item.product.id },
+                  data: {
+                    stock: {
+                      decrement: Math.round(item.quantity)
+                    }
+                  }
+                });
+              }
             } catch (err) {
-              console.warn(`Impossible de déduire le stock pour le produit ${item.product.id}:`, err);
+              console.warn(`Impossible d'ajuster le stock pour le produit ${item.product.id}:`, err);
             }
           }
         }
