@@ -25,7 +25,7 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({ onClose }) => {
   const [newPrice, setNewPrice] = useState('');
   const [newPurchasePrice, setNewPurchasePrice] = useState('');
   const [newStock, setNewStock] = useState('0');
-  const [newCategoryId, setNewCategoryId] = useState(categories && categories.length > 0 && categories[0] ? categories[0].id : '');
+  const [newCategoryId, setNewCategoryId] = useState(categories?.[0]?.id || '');
   const [newImage, setNewImage] = useState('');
   const [isAvailable, setIsAvailable] = useState(true);
 
@@ -171,7 +171,7 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({ onClose }) => {
                     setNewPrice('');
                     setNewPurchasePrice('');
                     setNewStock('0');
-                    setNewCategoryId(categories.length > 0 ? categories[0].id : '');
+                    setNewCategoryId(categories?.[0]?.id || '');
                     setNewImage('');
                     setIsAvailable(true);
                     setIsCreating(true);
