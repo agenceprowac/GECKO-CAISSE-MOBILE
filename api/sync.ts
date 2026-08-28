@@ -117,7 +117,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             price: prod.price,
             purchasePrice: prod.purchasePrice || 0,
             stock: prod.stock,
-            isAvailable: prod.isAvailable !== false,
+            isAvailable: prod.isAvailable === true,  // Correction : undefined !== false => true (bug), on force une valeur explicite
             image: prod.image || null,
             categoryId: categoryId
           },
@@ -129,7 +129,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             price: prod.price,
             purchasePrice: prod.purchasePrice || 0,
             stock: prod.stock,
-            isAvailable: prod.isAvailable !== false,
+            isAvailable: prod.isAvailable === true,  // Correction : même logique
             image: prod.image || null
           }
         });

@@ -76,7 +76,9 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({ onClose }) => {
   };
 
   const handleToggleAvailable = (product: Product) => {
-    updateProduct({ ...product, isAvailable: product.isAvailable === false ? true : false });
+    // Normaliser : si isAvailable est undefined, on considère le produit comme disponible (true)
+    const currentlyAvailable = product.isAvailable !== false;
+    updateProduct({ ...product, isAvailable: !currentlyAvailable });
   };
 
   const handleCreateOrUpdate = (e: React.FormEvent) => {
