@@ -192,8 +192,12 @@ export const StockManager: React.FC<StockManagerProps> = ({ onClose }) => {
     const dateStr = now.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
     const timeStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
+    // Formateur de prix compatible jsPDF (toLocaleString génère \u00A0 qui s'affiche en barre)
+    const fmtPrice = (n: number) =>
+      Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' F';
+
     // En-tête
-    doc.setFillColor(15, 23, 42); // dark-900
+    doc.setFillColor(15, 23, 42);
     doc.rect(0, 0, 210, 30, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(16);
@@ -201,7 +205,7 @@ export const StockManager: React.FC<StockManagerProps> = ({ onClose }) => {
     doc.text('INVENTAIRE DE STOCK', 14, 14);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Imprimé le ${dateStr} à ${timeStr}`, 14, 22);
+    doc.text(`Imprime le ${dateStr} a ${timeStr}`, 14, 22);
     doc.text(`${products.length} article(s) au total`, 196, 22, { align: 'right' });
 
     // Résumé rapide
@@ -215,9 +219,9 @@ export const StockManager: React.FC<StockManagerProps> = ({ onClose }) => {
     doc.roundedRect(136, 35, 60, 18, 2, 2, 'F');
     doc.setTextColor(156, 163, 175);
     doc.setFontSize(7);
-    doc.text('TOTAL UNITÉS EN STOCK', 41, 41, { align: 'center' });
+    doc.text('TOTAL UNITES EN STOCK', 41, 41, { align: 'center' });
     doc.text('RUPTURES DE STOCK', 102, 41, { align: 'center' });
-    doc.text('ALERTES (≤ 5 unités)', 166, 41, { align: 'center' });
+    doc.text('ALERTES (<=5 unites)', 166, 41, { align: 'center' });
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
@@ -235,9 +239,11 @@ export const StockManager: React.FC<StockManagerProps> = ({ onClose }) => {
         return [
           i + 1,
           p.name,
-          p.stock <= 0 ? '⚠ 0' : String(p.stock),
-          `${Math.round(p.price).toLocaleString('fr-FR')} F`,
-          p.purchasePrice ? `${Math.round(p.purchasePrice).toLocaleString('fr-FR')} F` : '-',
+          // Correction : pas de caractère spécial ⚠ (non supporté par Helvetica → rendu en &)
+          p.stock <= 0 ? '0' : String(p.stock),
+          // Correction : fmtPrice utilise . comme séparateur (toLocaleString génère \u00A0 → rendu en |)
+          fmtPrice(p.price),
+          p.purchasePrice ? fmtPrice(p.purchasePrice) : '-',
           statusTxt
         ];
       });
@@ -263,10 +269,15 @@ export const StockManager: React.FC<StockManagerProps> = ({ onClose }) => {
           else data.cell.styles.textColor = [22, 163, 74];
         }
         if (data.column.index === 2 && data.section === 'body') {
-          if (data.cell.text[0]?.includes('0')) data.cell.styles.textColor = [239, 68, 68];
+          if (data.cell.text[0] === '0') data.cell.styles.textColor = [239, 68, 68];
         }
       },
-      foot: [[`Total : ${products.length} articles`, '', `${totalStock} unités`, '', '', '']],
+      // Correction : colSpan sur la 1ere cellule du footer pour éviter le découpage du texte
+      foot: [[
+        { content: `Total : ${products.length} articles`, colSpan: 2, styles: { halign: 'left' as const } },
+        { content: `${totalStock} unites`, colSpan: 2, styles: { halign: 'center' as const } },
+        { content: '', colSpan: 2 }
+      ]],
       footStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: 'bold' },
       margin: { left: 14, right: 14 },
     });
