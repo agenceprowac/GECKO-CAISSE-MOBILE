@@ -290,6 +290,10 @@ export const usePOSStore = create<POSState>((set, get) => {
       const tenantId = tenantIdOverride || state.currentTenant?.id;
       if (!tenantId) return;
 
+      let sendProducts = false;
+      let sendTables = false;
+      let sendUsers = false;
+
       set({ isSyncing: true });
 
       try {
@@ -312,9 +316,24 @@ export const usePOSStore = create<POSState>((set, get) => {
 
         // N'envoyer les collections complètes que si des modifications locales non synchronisées ont eu lieu,
         // s'il s'agit d'une initialisation/reconnexion ou d'un envoi forcé (forceSendProducts)
-        const sendProducts = state.hasUnsyncedProductsChanges || Boolean(tenantIdOverride) || forceSendProducts;
-        const sendTables = state.hasUnsyncedTablesChanges || Boolean(tenantIdOverride);
-        const sendUsers = state.hasUnsyncedUsersChanges || Boolean(tenantIdOverride);
+        sendProducts = state.hasUnsyncedProductsChanges || Boolean(tenantIdOverride) || forceSendProducts;
+        sendTables = state.hasUnsyncedTablesChanges || Boolean(tenantIdOverride);
+        sendUsers = state.hasUnsyncedUsersChanges || Boolean(tenantIdOverride);
+
+        // Sauvegarder les IDs des catégories supprimées envoyées pour les filtrer au retour
+        const sentDeletedCategoryIds = [...state.deletedCategoryIds];
+
+        // Réinitialiser les indicateurs de modifications locales avant l'envoi.
+        // Si d'autres modifications surviennent pendant l'appel réseau,
+        // elles remettront ces indicateurs à true et seront envoyées au cycle suivant.
+        const resetFlags: Partial<POSState> = {};
+        if (sendProducts) resetFlags.hasUnsyncedProductsChanges = false;
+        if (sendTables) resetFlags.hasUnsyncedTablesChanges = false;
+        if (sendUsers) resetFlags.hasUnsyncedUsersChanges = false;
+        if (Object.keys(resetFlags).length > 0) {
+          set(resetFlags);
+          persist(resetFlags);
+        }
 
         const response = await fetch('/api/sync', {
           method: 'POST',
@@ -429,10 +448,7 @@ export const usePOSStore = create<POSState>((set, get) => {
           categories: finalCategories,
           stockHistory: finalStockHistory,
           sales: finalSales,
-          deletedCategoryIds: [],
-          hasUnsyncedProductsChanges: false,
-          hasUnsyncedTablesChanges: false,
-          hasUnsyncedUsersChanges: false
+          deletedCategoryIds: currentState.deletedCategoryIds.filter(id => !sentDeletedCategoryIds.includes(id))
         });
 
         // Mettre à jour le tenant actuel s'il a changé
@@ -451,7 +467,7 @@ export const usePOSStore = create<POSState>((set, get) => {
           tables: finalTables,
           users: finalUsers,
           categories: finalCategories,
-          deletedCategoryIds: [],
+          deletedCategoryIds: currentState.deletedCategoryIds.filter(id => !sentDeletedCategoryIds.includes(id)),
           stockHistory: finalStockHistory,
           sales: finalSales,
           tenants: data.allTenants && data.allTenants.length > 0 ? data.allTenants : state.tenants
@@ -463,6 +479,15 @@ export const usePOSStore = create<POSState>((set, get) => {
 
       } catch (err: any) {
         console.error('Échec de la synchronisation cloud :', err);
+        // En cas d'échec, restaurer les drapeaux de synchronisation s'ils ont été envoyés
+        const restoreFlags: Partial<POSState> = {};
+        if (sendProducts) restoreFlags.hasUnsyncedProductsChanges = true;
+        if (sendTables) restoreFlags.hasUnsyncedTablesChanges = true;
+        if (sendUsers) restoreFlags.hasUnsyncedUsersChanges = true;
+        if (Object.keys(restoreFlags).length > 0) {
+          set(restoreFlags);
+          persist(restoreFlags);
+        }
         // En cas d'erreur de réseau
         if (err.message === 'Failed to fetch' || err.name === 'TypeError' || !navigator.onLine) {
           set({ isOnline: false });
