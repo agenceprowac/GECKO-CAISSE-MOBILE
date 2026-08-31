@@ -1168,12 +1168,11 @@ export const usePOSStore = create<POSState>((set, get) => {
 
       const updatedHistory = [...newStockHistoryEntries, ...state.stockHistory];
 
-      // Mise à jour atomique unique dans le store Zustand (marquer le stock comme modifié pour l'envoyer au serveur)
+      // Mise à jour atomique unique dans le store Zustand (les stocks de vente seront déduits directement sur le serveur)
       set({ 
         sales: updatedSales,
         products: updatedProducts,
-        stockHistory: updatedHistory,
-        hasUnsyncedProductsChanges: isTest ? state.hasUnsyncedProductsChanges : true
+        stockHistory: updatedHistory
       });
 
       persist({ 

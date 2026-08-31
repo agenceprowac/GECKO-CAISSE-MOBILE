@@ -321,7 +321,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     categoryId: defaultCatId,
                     name: item.product.name,
                     price: item.product.price,
-                    stock: Math.max(0, (item.product.stock || 0)),
+                    // Auto-guérison : Initialiser le stock à la valeur d'origine du client moins la quantité vendue
+                    stock: Math.max(0, (item.product.stock || 0) - Math.round(item.quantity)),
                     isAvailable: item.product.isAvailable !== false
                   }
                 });
