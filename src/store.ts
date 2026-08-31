@@ -426,11 +426,46 @@ export const usePOSStore = create<POSState>((set, get) => {
 
         const finalProducts = [...otherTenantsProducts, ...mergedServerProducts, ...unsyncedLocalProducts];
 
+        // 2. Fusionner les Tables de façon sécurisée (conserver les modifs locales faites pendant le fetch)
         const otherTenantsTables = currentState.tables.filter(t => t.tenantId !== tenantId);
-        const finalTables = [...otherTenantsTables, ...data.tables];
+        const localTenantTables = currentState.tables.filter(t => t.tenantId === tenantId);
+        const localTableMap = new Map(localTenantTables.map(t => [t.id, t]));
+        
+        const mergedServerTables = (data.tables || []).map((st: any) => {
+          const local = localTableMap.get(st.id);
+          if (!local) return { ...st, tenantId };
+          if (currentState.hasUnsyncedTablesChanges) {
+            return { ...st, tenantId, name: local.name };
+          }
+          return { ...st, tenantId };
+        });
+        const serverTableIds = new Set((data.tables || []).map((t: any) => t.id));
+        const unsyncedLocalTables = localTenantTables.filter(t => !serverTableIds.has(t.id));
+        const finalTables = [...otherTenantsTables, ...mergedServerTables, ...unsyncedLocalTables];
 
+        // 3. Fusionner les Utilisateurs de façon sécurisée (conserver les modifs locales faites pendant le fetch)
         const otherTenantsUsers = currentState.users.filter(u => u.tenantId !== tenantId);
-        const finalUsers = [...otherTenantsUsers, ...data.users];
+        const localTenantUsers = currentState.users.filter(u => u.tenantId === tenantId);
+        const localUserMap = new Map(localTenantUsers.map(u => [u.id, u]));
+
+        const mergedServerUsers = (data.users || []).map((su: any) => {
+          const local = localUserMap.get(su.id);
+          if (!local) return { ...su, tenantId };
+          if (currentState.hasUnsyncedUsersChanges) {
+            return {
+              ...su,
+              tenantId,
+              name: local.name,
+              pinCode: local.pinCode,
+              role: local.role,
+              isActive: local.isActive !== false
+            };
+          }
+          return { ...su, tenantId };
+        });
+        const serverUserIds = new Set((data.users || []).map((u: any) => u.id));
+        const unsyncedLocalUsers = localTenantUsers.filter(u => !serverUserIds.has(u.id));
+        const finalUsers = [...otherTenantsUsers, ...mergedServerUsers, ...unsyncedLocalUsers];
 
         // 4. Fusionner les Catégories (normalisation : color et icon ne peuvent pas être null côté frontend)
         const otherCategories = currentState.categories.filter(c => c.tenantId !== tenantId);
@@ -1079,14 +1114,14 @@ export const usePOSStore = create<POSState>((set, get) => {
       const updatedTables = [...get().tables, { id: 'tbl_' + crypto.randomUUID(), name, tenantId }];
       set({ tables: updatedTables, hasUnsyncedTablesChanges: true });
       persist({ tables: updatedTables });
-      get().syncCloudData().catch(console.error);
+      get().syncCloudData(undefined, true).catch(console.error);
     },
 
     updateTable: (updatedTable) => {
       const updatedTables = get().tables.map(t => t.id === updatedTable.id ? { ...t, ...updatedTable } : t);
       set({ tables: updatedTables, hasUnsyncedTablesChanges: true });
       persist({ tables: updatedTables });
-      get().syncCloudData().catch(console.error);
+      get().syncCloudData(undefined, true).catch(console.error);
     },
 
     deleteTable: (tableId) => {
@@ -1097,7 +1132,7 @@ export const usePOSStore = create<POSState>((set, get) => {
         hasUnsyncedTablesChanges: true
       });
       persist({ tables: updatedTables });
-      get().syncCloudData().catch(console.error);
+      get().syncCloudData(undefined, true).catch(console.error);
     },
 
     // Users actions
@@ -1106,7 +1141,7 @@ export const usePOSStore = create<POSState>((set, get) => {
       const updatedUsers = [...get().users, { ...user, id: 'usr_' + crypto.randomUUID(), tenantId }];
       set({ users: updatedUsers, hasUnsyncedUsersChanges: true });
       persist({ users: updatedUsers });
-      get().syncCloudData().catch(console.error);
+      get().syncCloudData(undefined, true).catch(console.error);
     },
 
     updateUser: (updatedUser) => {
@@ -1118,7 +1153,7 @@ export const usePOSStore = create<POSState>((set, get) => {
         hasUnsyncedUsersChanges: true
       });
       persist({ users: updatedUsers });
-      get().syncCloudData().catch(console.error);
+      get().syncCloudData(undefined, true).catch(console.error);
     },
 
     deleteUser: (userId) => {
@@ -1130,7 +1165,7 @@ export const usePOSStore = create<POSState>((set, get) => {
         hasUnsyncedUsersChanges: true
       });
       persist({ users: updatedUsers });
-      get().syncCloudData().catch(console.error);
+      get().syncCloudData(undefined, true).catch(console.error);
     },
 
     setCurrentUser: (user) => set({ currentUser: user }),
